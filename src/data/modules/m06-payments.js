@@ -4,7 +4,7 @@ export default {
   title: {
     es: "Creación y uso de pagos",
     en: "Creating and using payments",
-    jp: "",
+    jp: "支払いの作成と使用",
   },
   lessons: [
     {
@@ -12,7 +12,7 @@ export default {
       title: {
         es: "Anatomía de una transacción de pago",
         en: "Anatomy of a payment transaction",
-        jp: "",
+        jp: "支払いトランザクションの解剖",
       },
       theory: {
         es: `El **Payment** es la transacción más fundamental de Xahau. Permite enviar XAH (o tokens) de una cuenta a otra.
@@ -133,14 +133,70 @@ There you will find:
 - Available flags (tfPartialPayment, tfLimitQuality, etc.)
 - Complete list of error codes and their causes
 - Special cases and advanced behaviors`,
-        jp: "",
+        jp: `**Payment**はXahauで最も基本的なトランザクションです。XAH（またはトークン）を一つのアカウントから別のアカウントに送ることができます。
+
+### Paymentトランザクションのフィールド
+
+| フィールド | 説明 |
+|---|---|
+| \`TransactionType\` | 常に \`"Payment"\` |
+| \`Account\` | 送信者のアドレス（支払う人） |
+| \`Destination\` | 受信者のアドレス |
+| \`Amount\` | 送金額（ネイティブXAHの場合はdrops単位） |
+| \`Fee\` | トランザクションコスト（drops単位） |
+| \`Sequence\` | 送信アカウントのシーケンス番号 |
+| \`NetworkID\` | ネットワーク識別子（Xahauで必要） |
+
+### Drops対XAH
+
+ネイティブXAHの金額は**drops**で表現されます：
+- 1 XAH = **1,000,000 drops**
+- ネイティブXAHの\`Amount\`フィールドはdropsの数を含む**文字列**です
+- 例：\`"10000000"\` = 10 XAH
+
+### Fee（トランザクションコスト）
+
+XahauのFeeは非常に低く予測可能です：
+- 典型的な支払いは**12 drops**（0.000012 XAH）
+- Feeは**バーン**（消却）されます。バリデーターには渡りません
+- \`xahau\`ライブラリは\`autofill()\`で自動的にFeeを計算できます
+
+### ネイティブXAHの代わりにIOU（トークン）を送る
+
+ネイティブXAHを送る場合、\`Amount\`フィールドはdrops単位の**文字列**です。しかし**IOU**（USDやEURなど、アカウントが発行したトークン）を送る場合、\`Amount\`は3つのフィールドを持つ**オブジェクト**になります：
+
+\`\`\`
+{
+  "currency": "USD",       // 通貨コード（3文字または40文字の16進数）
+  "issuer": "rIssuerAddress",  // トークンを発行したアカウント
+  "value": "100"           // 文字列としての金額
+}
+\`\`\`
+
+**IOUを送るための前提条件：**
+- **送信者に残高が必要**：あなたのアカウントはそのIOUの残高を持っている必要があります。以前の支払い、DEXでの取引、またはトークン発行者から直接取得できます。
+- **受信者にTrustLineが必要**：宛先アカウントは同じ発行者のそのIOUに対して事前にTrustLine（\`TrustSet\`）を作成している必要があります。TrustLineなしでは、\`tecPATH_DRY\`または\`tecNO_LINE\`で支払いが失敗します。
+
+### なぜXAH以外のIOUやトークンにこれらのフィールドが必要なのか？
+
+複数のエンティティが同じ種類のIOUを発行することがあります。例えば、異なる銀行がそれぞれ独自のEURまたはUSDトークンを発行できます。同じトークン名を共有する場合、発行者を指定することだけが区別する方法です。
+
+### Paymentの詳細情報
+
+Paymentトランザクションには、ここで説明するよりも多くのオプションフィールド、フラグ、エラーコードがあります。完全なリファレンスは[公式ドキュメント](https://xahau.network/docs/protocol-reference/transactions/transaction-types/payment/)を参照してください。
+
+そこでは以下が見つかります：
+- すべてのオプションフィールド（SendMax、DeliverMin、InvoiceIDなど）
+- 利用可能なフラグ（tfPartialPayment、tfLimitQualityなど）
+- エラーコードの完全なリストとその原因
+- 特殊ケースと高度な動作`,
       },
       codeBlocks: [
         {
           title: {
             es: "Enviar un pago de XAH entre dos cuentas",
             en: "Send an XAH payment between two accounts",
-            jp: "",
+            jp: "2つのアカウント間でXAH支払いを送信",
           },
           language: "javascript",
           code: {
@@ -224,14 +280,53 @@ async function sendPayment() {
 }
 
 sendPayment();`,
-            jp: "",
+            jp: `require("dotenv").config();
+const { Client, Wallet, xahToDrops } = require("xahau");
+
+async function sendPayment() {
+  const client = new Client("wss://xahau-test.net");
+  await client.connect();
+
+  // 送信者ウォレット（テストネットのシードを使用）、secp256k1でないシードの場合は", {algorithm: 'secp256k1'}"の部分を削除してください
+  const sender = Wallet.fromSeed(process.env.WALLET_SEED, {algorithm: 'secp256k1'});
+
+  // 支払いトランザクションを構築
+  const payment = {
+    TransactionType: "Payment",
+    Account: sender.address,
+    Destination: "rf1NrYAsv92UPDd8nyCG4A3bez7dhYE61r",
+    Amount: xahToDrops(10), // 10 XAH
+  };
+
+  // autofillがFee、Sequence、NetworkIDを自動的に追加
+  const prepared = await client.autofill(payment);
+  console.log("準備済みトランザクション：", prepared);
+
+  // トランザクションに署名
+  const signed = sender.sign(prepared);
+  console.log("トランザクションハッシュ：", signed.hash);
+
+  // 送信して検証を待つ
+  const result = await client.submitAndWait(signed.tx_blob);
+  console.log("結果：", result.result.meta.TransactionResult);
+
+  if (result.result.meta.TransactionResult === "tesSUCCESS") {
+    console.log("支払いが正常に送信されました！");
+  } else {
+    console.log("支払いエラー");
+  }
+
+  await client.disconnect();
+}
+
+sendPayment();`,
           },
         },
         {
           title: {
             es: "Enviar un pago de IOU (token) entre dos cuentas",
             en: "Send an IOU (token) payment between two accounts",
-            jp: "",
+            jp: "2つのアカウント間でIOU（トークン）支払いを送信",
           },
           language: "javascript",
           code: {
@@ -327,35 +422,80 @@ async function sendIOUPayment() {
 }
 
 sendIOUPayment();`,
-            jp: "",
+            jp: `require("dotenv").config();
+const { Client, Wallet } = require("xahau");
+
+// IOU残高があり、宛先にアクティブなTrustLineがない限り、このコードは動作しません。テストネットの設定に応じてフィールドを変更してください。
+async function sendIOUPayment() {
+  const client = new Client("wss://xahau-test.net");
+  await client.connect();
+
+  // 送信者ウォレット（テストネットのシードを使用）、secp256k1でないシードの場合は", {algorithm: 'secp256k1'}"の部分を削除してください
+  const sender = Wallet.fromSeed(process.env.WALLET_SEED, {algorithm: 'secp256k1'});
+
+  // IOUを送る場合、Amountはcurrency、issuer、valueを持つオブジェクト
+  // 要件：
+  //   1. 送信者はこのIOUの残高を持っている必要がある
+  //   2. 宛先はこのIOUのTrustLineを持っている必要がある
+  const payment = {
+    TransactionType: "Payment",
+    Account: sender.address,
+    Destination: "rRecipientAddress",
+    //送りたいトークンに応じてcurrency、issuer、valueを変更してください
+    Amount: {
+      currency: "USD",
+      issuer: "rTokenIssuerAddress",
+      value: "50", // 50 USD
+    },
+  };
+
+  const prepared = await client.autofill(payment);
+  const signed = sender.sign(prepared);
+  const result = await client.submitAndWait(signed.tx_blob);
+
+  const txResult = result.result.meta.TransactionResult;
+  console.log("結果：", txResult);
+
+  if (txResult === "tesSUCCESS") {
+    console.log("IOU支払いが正常に送信されました！");
+  } else if (txResult === "tecPATH_DRY") {
+    console.log("エラー：支払いルートがありません。宛先にTrustLineがありますか？");
+  } else if (txResult === "tecUNFUNDED_PAYMENT") {
+    console.log("エラー：このIOUの残高が不足しています。");
+  }
+
+  await client.disconnect();
+}
+
+sendIOUPayment();`,
           },
         },
       ],
       slides: [
         {
-          title: { es: "Transacción Payment", en: "Payment Transaction", jp: "" },
+          title: { es: "Transacción Payment", en: "Payment Transaction", jp: "Paymentトランザクション" },
           content: {
             es: "La transacción más básica de Xahau\n\n• Account → Quien envía\n• Destination → Quien recibe\n• Amount → Cantidad (en drops para XAH)\n• 1 XAH = 1,000,000 drops",
             en: "The most basic transaction on Xahau\n\n• Account → The sender\n• Destination → The receiver\n• Amount → Quantity (in drops for XAH)\n• 1 XAH = 1,000,000 drops",
-            jp: "",
+            jp: "Xahauで最も基本的なトランザクション\n\n• Account → 送信者\n• Destination → 受信者\n• Amount → 金額（XAHの場合はdrops単位）\n• 1 XAH = 1,000,000 drops",
           },
           visual: "💸",
         },
         {
-          title: { es: "Envío de IOUs (tokens)", en: "Sending IOUs (tokens)", jp: "" },
+          title: { es: "Envío de IOUs (tokens)", en: "Sending IOUs (tokens)", jp: "IOU（トークン）の送金" },
           content: {
             es: "Amount pasa a ser un objeto:\n\n• currency → Código del token (USD, EUR...)\n• issuer → Cuenta emisora del token\n• value → Cantidad como string\n\nRequisitos:\n• Tener saldo del IOU\n• Destino con TrustLine activa",
             en: "Amount becomes an object:\n\n• currency → Token code (USD, EUR...)\n• issuer → Token issuer account\n• value → Amount as a string\n\nRequirements:\n• Hold a balance of the IOU\n• Destination with an active TrustLine",
-            jp: "",
+            jp: "Amountがオブジェクトになります：\n\n• currency → トークンコード（USD、EURなど）\n• issuer → トークン発行アカウント\n• value → 文字列としての金額\n\n要件：\n• IOUの残高を保持\n• アクティブなTrustLineを持つ宛先",
           },
           visual: "🪙",
         },
         {
-          title: { es: "Documentación oficial", en: "Official documentation", jp: "" },
+          title: { es: "Documentación oficial", en: "Official documentation", jp: "公式ドキュメント" },
           content: {
             es: "Referencia completa de Payment:\ https://xahau.network/docs/technical/protocol-reference/transactions/transaction-types/payment\n\n• Campos opcionales (SendMax, DeliverMin...)\n• Flags (tfPartialPayment, tfLimitQuality...)\n• Códigos de error completos\n• Casos especiales y avanzados",
             en: "Complete Payment reference:\ https://xahau.network/docs/technical/protocol-reference/transactions/transaction-types/payment\n\n• Optional fields (SendMax, DeliverMin...)\n• Flags (tfPartialPayment, tfLimitQuality...)\n• Complete error codes\n• Special cases and advanced behaviors",
-            jp: "",
+            jp: "Paymentの完全リファレンス：\nhttps://xahau.network/docs/...\n\n• オプションフィールド（SendMax、DeliverMinなど）\n• フラグ（tfPartialPayment、tfLimitQualityなど）\n• 完全なエラーコード\n• 特殊ケースと高度な動作",
           },
           visual: "📖",
         },
@@ -366,7 +506,7 @@ sendIOUPayment();`,
       title: {
         es: "Pagos con Destination Tag y memos",
         en: "Payments with Destination Tag and memos",
-        jp: "",
+        jp: "Destination TagとMemoを使った支払い",
       },
       theory: {
         es: `Además del pago básico, Xahau soporta campos adicionales que permiten añadir contexto y funcionalidad a los pagos.
@@ -427,14 +567,42 @@ Each transaction returns a result code:
 - \`tecNO_DST\`: The destination account does not exist
 - \`tecDST_TAG_NEEDED\`: Destination Tag is required
 - \`tecNO_DST_INSUF_XAH\`: The destination does not have enough XAH for the reserve`,
-        jp: "",
+        jp: `基本的な支払いに加えて、Xahauは支払いにコンテキストと機能を追加できる追加フィールドをサポートしています。
+
+### Destination Tag
+
+**Destination Tag**は受信者が個別の支払いを識別できる整数です。特に以下に役立ちます：
+- **取引所**：どのユーザーへの入金かを識別する
+- **サービス**：支払いを注文または請求書と関連付ける
+- アカウントに\`RequireDestTag\`フラグが有効な場合、**タグなしでは支払いを送れません**
+
+システムはDestination Tagに最大32ビットを許可しており、最大4,294,967,295の整数を使用できます。支払い前に受信者が求める正しいDestination Tagを常に確認することが重要です。タグなしまたは間違ったタグで必要とするアカウントに支払いを送ると、資金を失う可能性があります。
+
+また**Source Tag**も存在し、送信者のために同じ機能を提供します。ただし、実際にはDestination Tagの方がはるかに一般的で広く使われています。
+
+### Memo
+
+**Memo**を使用してトランザクションに任意のデータを添付できます：
+- \`MemoType\`：Memoのタイプ（例："text/plain"、"application/json"）
+- \`MemoData\`：Memoのコンテンツ
+- Memoは**16進数**でエンコードされます
+- レジャー上でパブリックであり、誰でも見ることができます
+
+### トランザクション結果
+
+各トランザクションは結果コードを返します：
+- \`tesSUCCESS\`：トランザクション成功
+- \`tecUNFUNDED_PAYMENT\`：残高不足
+- \`tecNO_DST\`：宛先アカウントが存在しない
+- \`tecDST_TAG_NEEDED\`：Destination Tagが必要
+- \`tecNO_DST_INSUF_XAH\`：宛先にリザーブのXAHが不足`,
       },
       codeBlocks: [
         {
           title: {
             es: "Pago con Source, Destination Tag y Memos",
             en: "Payment with Source Tag, Destination Tag, and Memos",
-            jp: "",
+            jp: "Source Tag、Destination Tag、Memoを使った支払い",
           },
           language: "javascript",
           code: {
@@ -586,14 +754,87 @@ async function sendPaymentWithMemo() {
 }
 
 sendPaymentWithMemo();`,
-            jp: "",
+            jp: `require("dotenv").config();
+const { Client, Wallet, xahToDrops } = require("xahau");
+
+// テキストを16進数に変換するヘルパー関数
+function toHex(str) {
+  return Buffer.from(str, "utf8").toString("hex").toUpperCase();
+}
+function hexToString(hex) {
+  if (!hex) return null;
+  return Buffer.from(hex, "hex").toString("utf8");
+}
+
+async function sendPaymentWithMemo() {
+  const client = new Client("wss://xahau-test.net");
+  await client.connect();
+
+  // 送信者ウォレット（テストネットのシードを使用）、secp256k1でないシードの場合は", {algorithm: 'secp256k1'}"の部分を削除してください
+  const sender = Wallet.fromSeed(process.env.WALLET_SEED, {
+    algorithm: "secp256k1",
+  });
+
+  const payment = {
+    TransactionType: "Payment",
+    Account: sender.address,
+    Destination: "rf1NrYAsv92UPDd8nyCG4A3bez7dhYE61r",
+    Amount: xahToDrops(5), // 5 XAH
+    SourceTag: 1, // 支払いを識別するための送信者タグ
+    DestinationTag: 12345, // 支払いを識別するための宛先タグ
+    Memos: [
+      {
+        Memo: {
+          MemoType: toHex("text/plain"),
+          MemoData: toHex("Xahauコースの支払い"),
+        },
+      },
+    ],
+  };
+
+  const prepared = await client.autofill(payment);
+  const signed = sender.sign(prepared);
+  const result = await client.submitAndWait(signed.tx_blob);
+
+  const txResult = result.result.meta.TransactionResult;
+  console.log("結果：", txResult);
+
+  if (txResult === "tesSUCCESS") {
+    console.log("Memo付き支払いが送信されました！");
+    console.log("ハッシュ：", signed.hash);
+    const lookup = await client.request({
+      command: "tx",
+      transaction: signed.hash,
+    });
+
+    const tx = lookup.result.tx_json ?? lookup.result;
+    console.log("Source Tag：", tx.SourceTag);
+    console.log("Destination Tag：", tx.DestinationTag);
+
+    if (tx.Memos) {
+      tx.Memos.forEach((memoWrapper, index) => {
+        const memo = memoWrapper.Memo;
+
+        const memoType = hexToString(memo.MemoType);
+        const memoData = hexToString(memo.MemoData);
+
+        console.log("MemoType：", memoType);
+        console.log("MemoData：", memoData);
+      });
+    }
+  }
+
+  await client.disconnect();
+}
+
+sendPaymentWithMemo();`,
           },
         },
         {
           title: {
             es: "Verificar un pago recibido",
             en: "Verify a received payment",
-            jp: "",
+            jp: "受信した支払いを確認",
           },
           language: "javascript",
           code: {
@@ -671,35 +912,71 @@ async function verifyPayment(txHash) {
 }
 // Example transaction hash: "4B56BD61E7E7F59FF191A779FC0C9ACF68DC25C174930FCB906AC06EB812F38C"
 verifyPayment("YOUR_TRANSACTION_HASH_HERE");`,
-            jp: "",
+            jp: `const { Client } = require("xahau");
+
+async function verifyPayment(txHash) {
+  const client = new Client("wss://xahau-test.net");
+  await client.connect();
+
+  const response = await client.request({
+    command: "tx",
+    transaction: txHash,
+  });
+
+  const tx = response.result;
+  console.log("=== 支払い詳細 ===");
+  console.log("タイプ：", tx.TransactionType);
+  console.log("送信元：", tx.Account);
+  console.log("宛先：", tx.Destination);
+  console.log("金額：", Number(tx.Amount) / 1_000_000, "XAH");
+  console.log("Fee：", Number(tx.Fee) / 1_000_000, "XAH");
+  console.log("結果：", tx.meta.TransactionResult);
+  console.log("レジャー：", tx.ledger_index);
+
+  if (tx.DestinationTag !== undefined) {
+    console.log("Destination Tag：", tx.DestinationTag);
+  }
+
+  if (tx.Memos) {
+    for (const memo of tx.Memos) {
+      const type = Buffer.from(memo.Memo.MemoType, "hex").toString("utf8");
+      const data = Buffer.from(memo.Memo.MemoData, "hex").toString("utf8");
+      console.log(\`Memo [\${type}]: \${data}\`);
+    }
+  }
+
+  await client.disconnect();
+}
+// トランザクションハッシュの例："4B56BD61E7E7F59FF191A779FC0C9ACF68DC25C174930FCB906AC06EB812F38C"
+verifyPayment("YOUR_TRANSACTION_HASH_HERE");`,
           },
         },
       ],
       slides: [
         {
-          title: { es: "Destination Tag", en: "Destination Tag", jp: "" },
+          title: { es: "Destination Tag", en: "Destination Tag", jp: "Destination Tag" },
           content: {
             es: "Número para identificar pagos individuales\n\n• Usado por exchanges y servicios\n• Asocia pagos con usuarios/pedidos\n• Algunas cuentas lo requieren\n• Es un número entero (uint32)",
             en: "A number to identify individual payments\n\n• Used by exchanges and services\n• Associates payments with users/orders\n• Some accounts require it\n• It is an integer (uint32)",
-            jp: "",
+            jp: "個別の支払いを識別する番号\n\n• 取引所やサービスで使用\n• 支払いをユーザー/注文と関連付け\n• 一部のアカウントでは必須\n• 整数（uint32）",
           },
           visual: "🏷️",
         },
         {
-          title: { es: "Memos", en: "Memos", jp: "" },
+          title: { es: "Memos", en: "Memos", jp: "Memo" },
           content: {
             es: "Datos adjuntos a una transacción\n\n• MemoType → Tipo (text/plain, etc.)\n• MemoData → Contenido\n• Codificados en hexadecimal\n• Públicos en el ledger",
             en: "Data attached to a transaction\n\n• MemoType → Type (text/plain, etc.)\n• MemoData → Content\n• Encoded in hexadecimal\n• Public on the ledger",
-            jp: "",
+            jp: "トランザクションに添付するデータ\n\n• MemoType → タイプ（text/plainなど）\n• MemoData → コンテンツ\n• 16進数でエンコード\n• レジャー上でパブリック",
           },
           visual: "📝",
         },
         {
-          title: { es: "Seguridad del DestinationTag", en: "Destination Tag security", jp: "" },
+          title: { es: "Seguridad del DestinationTag", en: "Destination Tag security", jp: "Destination Tagのセキュリティ" },
           content: {
             es: "• Flag RequireDestTag en la cuenta destino\n• Sin tag → error tecDST_TAG_NEEDED\n• Exchanges exigen tag para depósitos\n• Sin tag correcto = fondos perdidos\n• Siempre valida el tag antes de enviar\n• Maneja errores: tecNO_DST, tecUNFUNDED",
             en: "• RequireDestTag flag on the destination account\n• No tag → error tecDST_TAG_NEEDED\n• Exchanges require a tag for deposits\n• Wrong or missing tag = lost funds\n• Always validate the tag before sending\n• Handle errors: tecNO_DST, tecUNFUNDED",
-            jp: "",
+            jp: "• 宛先アカウントのRequireDestTagフラグ\n• タグなし → tecDST_TAG_NEEDEDエラー\n• 取引所は入金にタグを要求\n• タグ誤りや欠落 = 資金消失\n• 送信前にタグを常に確認\n• エラーを処理：tecNO_DST、tecUNFUNDED",
           },
           visual: "🔒",
         },
@@ -710,7 +987,7 @@ verifyPayment("YOUR_TRANSACTION_HASH_HERE");`,
       title: {
         es: "Pagos cross-currency y pathfinding",
         en: "Cross-currency payments and pathfinding",
-        jp: "",
+        jp: "クロスカレンシー支払いとパスファインディング",
       },
       theory: {
         es: `Xahau no solo permite enviar XAH nativo o tokens del mismo tipo: también soporta **pagos cross-currency**, donde el emisor envía una moneda y el receptor recibe otra diferente. Esto es posible gracias al **DEX integrado** y al sistema de **pathfinding**.
@@ -783,36 +1060,70 @@ The \`tfPartialPayment\` flag (value: \`0x00020000\`) allows a payment to delive
 - Useful when liquidity may vary between the query and execution
 - Use \`DeliverMin\` to set an acceptable minimum
 - **IMPORTANT**: When receiving payments, always check \`delivered_amount\` in the metadata, **not** the \`Amount\` field. An attacker could send a partial payment that shows a high \`Amount\` but delivers much less`,
-        jp: "",
+        jp: `XahauはネイティブXAHや同種トークンの送金だけでなく、**クロスカレンシー支払い**もサポートしています。送信者が一つの通貨を送り、受信者が別の通貨を受け取るものです。これは**組み込みDEX**と**パスファインディング**システムのおかげで可能です。
+
+### クロスカレンシー支払い
+
+クロスカレンシー支払いでは、例えば送信者がXAHで支払い、受信者がUSDを受け取れます。Xahauは通貨を変換するためにDEXを通じた最良のパスを自動的に見つけます。
+
+### パスファインディングシステム
+
+パスファインディングは通貨間の変換ルートを見つけるメカニズムです：
+- Xahauはトラストラインとデックス注文を通じた**パス**を検索します
+- 複数の中間変換をチェーンできます
+- 常に利用可能な**最良のレート**を見つけようとします
+
+### クロスカレンシー支払いの主要フィールド
+
+| フィールド | 説明 |
+|---|---|
+| \`Amount\` | 受信者が受け取るべき額（宛先通貨） |
+| \`SendMax\` | 送信者が支払う最大額（発信通貨） |
+| \`DeliverMin\` | 受信者が受け取る最小額（部分支払いの場合） |
+| \`Paths\` | パスファインディングが見つけた変換ルート |
+
+### ripple_path_findコマンド
+
+クロスカレンシー支払いを送る前に、\`ripple_path_find\`を使って：
+- 2つの通貨間のパスが存在するか確認する
+- トランザクションに必要な\`Paths\`を取得する
+- 推定コスト（\`source_amount\`）を知る
+
+### 部分支払い（tfPartialPayment）
+
+\`tfPartialPayment\`フラグ（値：\`0x00020000\`）は支払いが\`Amount\`に指定された額より**少なく**配信することを許可します：
+- クエリと実行の間で流動性が変わる可能性がある場合に便利
+- \`DeliverMin\`を使って許容できる最小額を設定する
+- **重要**：支払いを受け取る際、メタデータの\`delivered_amount\`を常に確認してください。\`Amount\`フィールドでは**なく**。攻撃者は高い\`Amount\`を表示しながらずっと少ない額を配信する部分支払いを送れます`,
       },
       codeBlocks: [
-        
+
       ],
       slides: [
         {
-          title: { es: "Pagos cross-currency", en: "Cross-currency payments", jp: "" },
+          title: { es: "Pagos cross-currency", en: "Cross-currency payments", jp: "クロスカレンシー支払い" },
           content: {
             es: "Envía una moneda, el receptor recibe otra\n\n• El DEX integrado convierte automáticamente\n• Amount = lo que recibe el receptor\n• SendMax = máximo que paga el emisor\n• Paths = rutas de conversión",
             en: "Send one currency, the receiver gets another\n\n• The built-in DEX converts automatically\n• Amount = what the receiver gets\n• SendMax = maximum the sender pays\n• Paths = conversion routes",
-            jp: "",
+            jp: "一つの通貨を送り、受信者は別の通貨を受け取る\n\n• 組み込みDEXが自動的に変換\n• Amount = 受信者が受け取る額\n• SendMax = 送信者が支払う最大額\n• Paths = 変換ルート",
           },
           visual: "🔄",
         },
         {
-          title: { es: "Pathfinding", en: "Pathfinding", jp: "" },
+          title: { es: "Pathfinding", en: "Pathfinding", jp: "パスファインディング" },
           content: {
             es: "ripple_path_find busca rutas de conversión\n\n1. Indica cuenta origen y destino\n2. Especifica la moneda y cantidad destino\n3. Obtén alternativas con coste estimado\n4. Usa paths_computed en tu Payment",
             en: "ripple_path_find searches for conversion routes\n\n1. Specify source and destination accounts\n2. Specify the destination currency and amount\n3. Get alternatives with estimated cost\n4. Use paths_computed in your Payment",
-            jp: "",
+            jp: "ripple_path_findが変換ルートを検索\n\n1. 送信元と宛先アカウントを指定\n2. 宛先通貨と金額を指定\n3. 推定コストの代替案を取得\n4. PaymentでPaths computedを使用",
           },
           visual: "🗺️",
         },
         {
-          title: { es: "Pagos parciales", en: "Partial payments", jp: "" },
+          title: { es: "Pagos parciales", en: "Partial payments", jp: "部分支払い" },
           content: {
             es: "Flag tfPartialPayment permite entregar menos\n\n• Útil cuando la liquidez varía\n• DeliverMin = mínimo aceptable\n• SIEMPRE verificar delivered_amount\n• NUNCA confiar en el campo Amount\n\n⚠️ Riesgo de seguridad si no se verifica",
             en: "tfPartialPayment flag allows delivering less\n\n• Useful when liquidity varies\n• DeliverMin = acceptable minimum\n• ALWAYS verify delivered_amount\n• NEVER trust the Amount field\n\n⚠️ Security risk if not verified",
-            jp: "",
+            jp: "tfPartialPaymentフラグで少なく配信可能\n\n• 流動性が変わる場合に便利\n• DeliverMin = 許容できる最小額\n• 常にdelivered_amountを確認\n• Amountフィールドは信頼しない\n\n⚠️ 確認しないとセキュリティリスク",
           },
           visual: "⚠️",
         },

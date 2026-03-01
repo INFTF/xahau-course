@@ -4,7 +4,7 @@ export default {
   title: {
     es: "Generación de tu primera wallet",
     en: "Generating your first wallet",
-    jp: "",
+    jp: "初めてのウォレット生成",
   },
   lessons: [
     {
@@ -12,7 +12,7 @@ export default {
       title: {
         es: "Criptografía y claves en Xahau",
         en: "Cryptography and keys in Xahau",
-        jp: "",
+        jp: "Xahauの暗号技術と鍵",
       },
       theory: {
         es: `Antes de interactuar con Xahau, necesitas una **wallet** (cartera). Una wallet no es más que un par de claves criptográficas que te permiten firmar transacciones y demostrar la propiedad de tu cuenta.
@@ -69,14 +69,40 @@ Unlike Ethereum, in Xahau an account **does not exist on the ledger until it rec
 - Never share your private key (seed/secret)
 - Use the **testnet** for testing (tokens with no real value)
 - Store your mainnet seeds in a secure, offline location`,
-        jp: "",
+        jp: `Xahauと対話する前に、**ウォレット**が必要です。ウォレットはトランザクションに署名しアカウントの所有権を証明するための暗号鍵ペアにすぎません。
+
+### 鍵ペア
+
+Xahau（および多くの他のブロックチェーン）では、各アカウントは楕円曲線暗号に基づいています：
+
+- **秘密鍵（Secret/Seed）**：絶対に共有してはならない秘密の値。トランザクションの署名に使用される。通常 \`s\` で始まる「ファミリーシード」として表される（例：\`sEdV....\`）
+- **公開鍵**：秘密鍵から導出される。署名の検証に使用される
+- **アドレス（Account）**：公開鍵から導出される。\`r\` で始まる（例：\`rHb9CJ...\`）。ネットワーク上のあなたの公開識別子
+
+### サポートされているアルゴリズム
+
+Xahauは2つの署名アルゴリズムをサポートしています：
+- **secp256k1**：Bitcoinが使用するものと同じ。デフォルトのアルゴリズム
+- **ed25519**：より新しく効率的。新しいアカウントに推奨
+
+**注意：** \`xahau js\` ライブラリはアルゴリズムが指定されない場合、デフォルトで **ed25519** を使用します。[xahau-test.net](https://xahau-test.net) のフォーセットは **secp256k1** でウォレットを生成するため、このコースのコード例ではウォレット生成時にこのアルゴリズムを指定しています。
+
+### アカウントのアクティベーション
+
+Ethereumとは異なり、Xahauではアカウントは**最初の入金を受け取るまでレジャーに存在しません**。アカウントをアクティベートするには最低 **1 XAH**（ベースリザーブ）が必要です。このXAHはアカウントが存在する限りリザーブとしてロックされます。
+
+### セキュリティ
+
+- 秘密鍵（seed/secret）を絶対に共有しないこと
+- テストには**テストネット**を使用する（実際の価値のないトークン）
+- メインネットのシードは安全なオフラインの場所に保管すること`,
       },
       codeBlocks: [
         {
           title: {
             es: "Generar una wallet nueva",
             en: "Generate a new wallet",
-            jp: "",
+            jp: "新しいウォレットを生成する",
           },
           language: "javascript",
           code: {
@@ -110,14 +136,28 @@ console.log("=== Wallet ed25519 ===");
 console.log("Address:", wallet2.address);
 console.log("Public key:", wallet2.publicKey);
 console.log("Seed:", wallet2.seed);`,
-            jp: "",
+            jp: `const { ECDSA, Wallet } = require("xahau");
+
+// デフォルトアルゴリズム（secp256k1）でウォレットを生成する
+const wallet1 = Wallet.generate(ECDSA.secp256k1);
+console.log("=== Wallet secp256k1 ===");
+console.log("アドレス：", wallet1.address);
+console.log("公開鍵：", wallet1.publicKey);
+console.log("シード：", wallet1.seed);
+
+// ed25519アルゴリズムでウォレットを生成する
+const wallet2 = Wallet.generate();
+console.log("=== Wallet ed25519 ===");
+console.log("アドレス：", wallet2.address);
+console.log("公開鍵：", wallet2.publicKey);
+console.log("シード：", wallet2.seed);`,
           },
         },
         {
           title: {
             es: "Restaurar una wallet desde un seed existente",
             en: "Restore a wallet from an existing seed",
-            jp: "",
+            jp: "既存のシードからウォレットを復元する",
           },
           language: "javascript",
           code: {
@@ -149,35 +189,48 @@ console.log("Seed:", wallet.seed);
 
 // The same seed always generates the same address
 // Never share your seed!`,
-            jp: "",
+            jp: `const { Wallet } = require("xahau");
+
+// 既存のシードからウォレットを復元する
+// （自分のテストネットシードを使用すること）
+const seed = "sEdVHBhkL2next8NH9cMPyPJoXXXXXX";
+// ed25519で導出したい場合は {algorithm: 'secp256k1'} を削除する（デフォルトでed25519を使用）
+const wallet = Wallet.fromSeed(seed, {algorithm: 'secp256k1'});
+
+console.log("アドレス：", wallet.address);
+console.log("公開鍵：", wallet.publicKey);
+console.log("シード：", wallet.seed);
+
+// 同じシードは常に同じアドレスを生成する
+// シードを絶対に共有しないこと！`,
           },
         },
       ],
       slides: [
         {
-          title: { es: "¿Qué es una Wallet?", en: "What is a Wallet?", jp: "" },
+          title: { es: "¿Qué es una Wallet?", en: "What is a Wallet?", jp: "ウォレットとは？" },
           content: {
             es: "Un par de claves criptográficas:\n\n🔑 Clave privada (seed) → Firmar transacciones\n📢 Clave pública → Verificar firmas\n📍 Dirección (r...) → Tu identidad en la red",
             en: "A pair of cryptographic keys:\n\n🔑 Private key (seed) → Sign transactions\n📢 Public key → Verify signatures\n📍 Address (r...) → Your identity on the network",
-            jp: "",
+            jp: "暗号鍵のペア：\n\n🔑 秘密鍵（シード） → トランザクションに署名\n📢 公開鍵 → 署名を検証\n📍 アドレス（r...） → ネットワーク上のあなたの識別子",
           },
           visual: "👛",
         },
         {
-          title: { es: "Algoritmos de firma", en: "Signing algorithms", jp: "" },
+          title: { es: "Algoritmos de firma", en: "Signing algorithms", jp: "署名アルゴリズム" },
           content: {
             es: "Xahau soporta dos algoritmos:\n\n• secp256k1 → Igual que Bitcoin (por defecto)\n• ed25519 → Más moderno y eficiente\n\nAmbos son seguros y válidos",
             en: "Xahau supports two algorithms:\n\n• secp256k1 → Same as Bitcoin (default)\n• ed25519 → More modern and efficient\n\nBoth are secure and valid",
-            jp: "",
+            jp: "Xahauは2つのアルゴリズムをサポート：\n\n• secp256k1 → Bitcoinと同じ（デフォルト）\n• ed25519 → より新しく効率的\n\nどちらも安全で有効",
           },
           visual: "🔐",
         },
         {
-          title: { es: "Activación de cuenta", en: "Account activation", jp: "" },
+          title: { es: "Activación de cuenta", en: "Account activation", jp: "アカウントのアクティベーション" },
           content: {
             es: "Una cuenta NO existe hasta que recibe\nsu primer depósito\n\n• Mínimo 1 XAH de reserva base\n• Este XAH queda bloqueado\n• En testnet: usa el faucet gratuito",
             en: "An account does NOT exist until it receives\nits first deposit\n\n• Minimum 1 XAH base reserve\n• This XAH remains locked\n• On testnet: use the free faucet",
-            jp: "",
+            jp: "アカウントは最初の入金を受け取るまで\n存在しない\n\n• 最低1 XAHのベースリザーブが必要\n• このXAHはロックされる\n• テストネット：無料フォーセットを使用",
           },
           visual: "✨",
         },
@@ -188,7 +241,7 @@ console.log("Seed:", wallet.seed);
       title: {
         es: "Activar tu wallet en testnet",
         en: "Activate your wallet on testnet",
-        jp: "",
+        jp: "テストネットでウォレットをアクティベートする",
       },
       theory: {
         es: `Ahora que sabes generar una wallet, el siguiente paso es **activarla** en la red. Para desarrollo y pruebas, usaremos la **testnet de Xahau** donde los tokens no tienen valor real.
@@ -233,14 +286,34 @@ Once your account is activated, you can verify its existence by querying the \`a
 - **Sequence**: Sequence number for the next transaction
 - **Flags**: Account configuration
 - **OwnerCount**: Number of objects the account owns on the ledger`,
-        jp: "",
+        jp: `ウォレットの生成方法がわかったので、次のステップはネットワーク上で**アクティベート**することです。開発とテストには、トークンに実際の価値がない **Xahauテストネット**を使用します。
+
+### テストネットとは？
+
+テストネットは開発用に設計されたXahauネットワークのコピーです：
+- トークン（テストXAH）は**実際の価値がない**
+- **フォーセット**から無料でトークンを取得できる
+- トランザクションはメインネットと同様に機能する
+- 学習と実験に最適な場所
+
+### フォーセット
+
+フォーセットはテストトークンをウォレットに送るサービスです。\`xahau\` ライブラリを使ってコードから直接使用できます。フォーセットのWebインターフェースからテストXAH付きのウォレットを取得することもできます：[xahau-test.net](https://xahau-test.net)。その後、シードをコードで使用するか、Xamanにインポートできます。
+
+### アカウントの確認
+
+アカウントがアクティベートされたら、\`account_info\` コマンドを照会してその存在を確認できます。以下が表示されます：
+- **Balance**：アカウントのXAH残高（dropsで：1 XAH = 1,000,000 drops）
+- **Sequence**：次のトランザクションのシーケンス番号
+- **Flags**：アカウントの設定
+- **OwnerCount**：アカウントがレジャーに持つオブジェクト数`,
       },
       codeBlocks: [
         {
           title: {
             es: "Crear y activar una wallet en testnet usando el faucet",
             en: "Create and activate a wallet on testnet using the faucet",
-            jp: "",
+            jp: "フォーセットを使ってテストネットでウォレットを作成・アクティベートする",
           },
           language: "javascript",
           code: {
@@ -316,14 +389,49 @@ async function createTestnetWallet() {
 }
 
 createTestnetWallet();`,
-            jp: "",
+            jp: `const { Client, Wallet } = require("xahau");
+
+async function createTestnetWallet() {
+  const client = new Client("wss://xahau-test.net");
+  await client.connect();
+
+  // 新しいウォレットを生成する
+  const wallet = Wallet.generate();
+  console.log("ウォレットが生成されました：");
+  console.log("  アドレス：", wallet.address);
+  console.log("  シード：", wallet.seed);
+
+  // テストネットフォーセットから資金をリクエストする
+  console.log("フォーセットから資金をリクエスト中...");
+  const fundResult = await client.fundWallet(wallet);
+
+  console.log("ウォレットに資金が追加されました！");
+  console.log("  残高：", fundResult.balance, "XAH");
+
+  // レジャーのアカウントを確認する
+  const response = await client.request({
+    command: "account_info",
+    account: wallet.address,
+    ledger_index: "validated",
+  });
+
+  const account = response.result.account_data;
+  console.log("レジャーのアカウントデータ：");
+  console.log("  残高：", account.Balance, "drops");
+  console.log("  残高：", Number(account.Balance) / 1_000_000, "XAH");
+  console.log("  シーケンス：", account.Sequence);
+
+  await client.disconnect();
+}
+
+createTestnetWallet();`,
           },
         },
         {
           title: {
             es: "Consultar el balance de una cuenta existente",
             en: "Check the balance of an existing account",
-            jp: "",
+            jp: "既存アカウントの残高を確認する",
           },
           language: "javascript",
           code: {
@@ -391,35 +499,66 @@ async function checkBalance(address) {
 
 // Replace with your testnet address
 checkBalance("rYourXahauAddressHere");`,
-            jp: "",
+            jp: `const { Client } = require("xahau");
+
+async function checkBalance(address) {
+  const client = new Client("wss://xahau-test.net");
+  await client.connect();
+
+  try {
+    const response = await client.request({
+      command: "account_info",
+      account: address,
+      ledger_index: "validated",
+    });
+
+    const account = response.result.account_data;
+    console.log("アカウント：", account.Account);
+    console.log("残高：", Number(account.Balance) / 1_000_000, "XAH");
+    console.log("シーケンス：", account.Sequence);
+    console.log("オーナー数：", account.OwnerCount);
+  } catch (error) {
+    if (error.data?.error === "actNotFound") {
+      console.log("アカウントがレジャーに存在しません。");
+      console.log("アクティベートには少なくとも1 XAHを受け取る必要があります。");
+    } else {
+      console.error("エラー：", error.message);
+    }
+  }
+
+  await client.disconnect();
+}
+
+// テストネットのアドレスに置き換えてください
+checkBalance("rYourXahauAddressHere");`,
           },
         },
       ],
       slides: [
         {
-          title: { es: "Testnet de Xahau", en: "Xahau Testnet", jp: "" },
+          title: { es: "Testnet de Xahau", en: "Xahau Testnet", jp: "Xahauテストネット" },
           content: {
             es: "Red de pruebas para desarrollo\n\n• Tokens sin valor real\n• Faucet gratuito para obtener test XAH\n• Funciona igual que mainnet\n• Perfecto para aprender",
             en: "Test network for development\n\n• Tokens with no real value\n• Free faucet to get test XAH\n• Works the same as mainnet\n• Perfect for learning",
-            jp: "",
+            jp: "開発用テストネットワーク\n\n• 実際の価値のないトークン\n• テストXAHを取得する無料フォーセット\n• メインネットと同様に機能する\n• 学習に最適",
           },
           visual: "🧪",
         },
         {
-          title: { es: "Flujo de activación", en: "Activation flow", jp: "" },
+          title: { es: "Flujo de activación", en: "Activation flow", jp: "アクティベーションフロー" },
           content: {
             es: "1️⃣ Generar wallet (par de claves)\n2️⃣ Obtener XAH del faucet\n3️⃣ El faucet envía un pago\n4️⃣ La cuenta se crea en el ledger\n5️⃣ ¡Lista para usar!",
             en: "1️⃣ Generate wallet (key pair)\n2️⃣ Get XAH from the faucet\n3️⃣ The faucet sends a payment\n4️⃣ The account is created on the ledger\n5️⃣ Ready to use!",
-            jp: "",
+            jp: "1️⃣ ウォレットを生成する（鍵ペア）\n2️⃣ フォーセットからXAHを取得する\n3️⃣ フォーセットが支払いを送る\n4️⃣ アカウントがレジャーに作成される\n5️⃣ 使用準備完了！",
           },
           visual: "🚀",
         },
         {
-          title: { es: "Verificar con account_info", en: "Verify with account_info", jp: "" },
+          title: { es: "Verificar con account_info", en: "Verify with account_info", jp: "account_infoで確認する" },
           content: {
             es: "Comando account_info para confirmar activación:\n\n• Balance → XAH disponible (en drops)\n• Sequence → Número de próxima transacción\n• Flags → Configuración de la cuenta\n• OwnerCount → Objetos en el ledger\n\nSi la cuenta no existe: error actNotFound\n1 XAH = 1,000,000 drops",
             en: "account_info command to confirm activation:\n\n• Balance → Available XAH (in drops)\n• Sequence → Next transaction number\n• Flags → Account configuration\n• OwnerCount → Objects on the ledger\n\nIf the account does not exist: actNotFound error\n1 XAH = 1,000,000 drops",
-            jp: "",
+            jp: "アクティベーションを確認するaccount_infoコマンド：\n\n• Balance → 利用可能なXAH（dropsで）\n• Sequence → 次のトランザクション番号\n• Flags → アカウント設定\n• OwnerCount → レジャー上のオブジェクト\n\nアカウントが存在しない場合：actNotFoundエラー\n1 XAH = 1,000,000 drops",
           },
           visual: "🔎",
         },
@@ -430,7 +569,7 @@ checkBalance("rYourXahauAddressHere");`,
       title: {
         es: "Comprobar tu cuenta en exploradores de bloques",
         en: "Check your account on block explorers",
-        jp: "",
+        jp: "ブロックエクスプローラーでアカウントを確認する",
       },
       theory: {
         es: `Una vez que tu cuenta está activada en la testnet (o en mainnet), puedes verificar su estado usando **exploradores de bloques**: aplicaciones web que permiten consultar cualquier cuenta, transacción o ledger de forma visual y sin necesidad de escribir código.
@@ -549,34 +688,91 @@ Each transaction has a unique **hash** (a long hexadecimal string). You can sear
 - **Debugging**: When something fails, the explorer shows all error details
 - **Transparency**: Anyone can verify any operation on the blockchain
 - **Learning**: Viewing real transactions helps you understand how the network works internally`,
-        jp: "",
+        jp: `テストネット（またはメインネット）でアカウントをアクティベートしたら、**ブロックエクスプローラー**を使ってその状態を確認できます。ブロックエクスプローラーとは、コードを書くことなく、任意のアカウント・トランザクション・レジャーを視覚的に照会できるWebアプリケーションです。
+
+### ブロックエクスプローラーとは？
+
+**ブロックエクスプローラー**は、Xahauのノードに接続し、ブロックチェーンの情報を読みやすい形式で表示するWebツールです。ブロックチェーンのための「検索エンジン」のようなものです。
+
+エクスプローラーでできること：
+- 任意のアカウントの**残高**と**トークン**を確認
+- 完全な**トランザクション履歴**を照会
+- 任意のトランザクションの**詳細**（ハッシュ、フィールド、結果）を確認
+- アカウントに関連する**レジャーオブジェクト**（トラストライン、オファー、フック）を確認
+- トランザクションが正常に処理されたかを検証
+
+### Xahauメインネットのエクスプローラー
+
+**Xahau Explorer** — [xahauexplorer.com](https://xahauexplorer.com)
+**XRPLWin Xahau** — [xahau.xrplwin.com](https://xahau.xrplwin.com)
+**Xahau Network Explorer** — [explorer.xahau.network](https://explorer.xahau.network)
+**XahScan** — [xahscan.com](https://xahscan.com)
+
+
+### Xahauテストネットのエクスプローラー
+
+**テストネット**（このコースで使用するもの）のアカウントを確認するには、以下のエクスプローラーを使用してください：
+
+- [test.xahauexplorer.com](https://test.xahauexplorer.com)
+- [xahau-testnet.xrplwin.com](https://xahau-testnet.xrplwin.com)
+- [explorer.xahau-test.net](https://explorer.xahau-test.net)
+
+### アカウントの確認方法
+
+1. テストネットのエクスプローラーを開く
+2. 検索バーに**アドレス**（\`r\`で始まる文字列）を貼り付ける
+3. Enterキーを押すか検索ボタンをクリック
+4. アカウント情報が表示されます：
+   - XAHの**残高**
+   - 保有している**トークン**（トラストライン）
+   - 最近の**トランザクション**
+   - **フラグ**とアカウント設定
+   - 関連するレジャー**オブジェクト**
+
+### トランザクションの確認
+
+各トランザクションには一意の**ハッシュ**（長い16進数の文字列）があります。そのハッシュをエクスプローラーで検索すると、以下が確認できます：
+- トランザクションの**タイプ**（Payment、TrustSet、AccountSetなど）
+- **送信元**と**送信先**のアカウント
+- 送信された**金額**
+- **結果**（tesSUCCESS、tecPATH_DRYなど）
+- 支払われた**手数料**
+- 含まれた**レジャー**
+- レジャー状態の**変更**（AffectedNodes）
+
+### エクスプローラーを使う理由
+
+- **視覚的な確認**：コードを書かずにトランザクションが正常に処理されたことを確認できる
+- **デバッグ**：何か失敗した場合、エクスプローラーにエラーの詳細がすべて表示される
+- **透明性**：誰でもブロックチェーン上のすべての操作を確認できる
+- **学習**：実際のトランザクションを見ることで、ネットワークの内部動作を理解できる`,
       },
             codeBlocks: [],
       slides: [
         {
-          title: { es: "¿Qué es un block explorer?", en: "What is a block explorer?", jp: "" },
+          title: { es: "¿Qué es un block explorer?", en: "What is a block explorer?", jp: "ブロックエクスプローラーとは？" },
           content: {
             es: "Una herramienta web para consultar la blockchain\nsin escribir código\n\n• Ver balances y tokens de cualquier cuenta\n• Consultar historial de transacciones\n• Inspeccionar detalles de cada operación\n• Verificar resultados y errores",
             en: "A web tool to query the blockchain\nwithout writing code\n\n• View balances and tokens of any account\n• Check transaction history\n• Inspect details of each operation\n• Verify results and errors",
-            jp: "",
+            jp: "コードを書かずにブロックチェーンを照会できるWebツール\n\n• 任意のアカウントの残高とトークンを確認\n• トランザクション履歴を照会\n• 各操作の詳細を確認\n• 結果とエラーを検証",
           },
           visual: "🔍",
         },
         {
-          title: { es: "Exploradores de Xahau", en: "Xahau Explorers", jp: "" },
+          title: { es: "Exploradores de Xahau", en: "Xahau Explorers", jp: "Xahauのエクスプローラー" },
           content: {
             es: "Mainnet:\n• xahauexplorer.com\n• xahau.xrplwin.com\n• explorer.xahau.network\n• xahscan.com\n\nTestnet (para el curso):\n• test.xahauexplorer.com\n• xahau-testnet.xrplwin.com\n• explorer.xahau-test.net",
             en: "Mainnet:\n• xahauexplorer.com\n• xahau.xrplwin.com\n• explorer.xahau.network\n• xahscan.com\n\nTestnet (for the course):\n• test.xahauexplorer.com\n• xahau-testnet.xrplwin.com\n• explorer.xahau-test.net",
-            jp: "",
+            jp: "メインネット：\n• xahauexplorer.com\n• xahau.xrplwin.com\n• explorer.xahau.network\n• xahscan.com\n\nテストネット（コース用）：\n• test.xahauexplorer.com\n• xahau-testnet.xrplwin.com\n• explorer.xahau-test.net",
           },
           visual: "🌐",
         },
         {
-          title: { es: "Cómo consultar tu cuenta", en: "How to check your account", jp: "" },
+          title: { es: "Cómo consultar tu cuenta", en: "How to check your account", jp: "アカウントの確認方法" },
           content: {
             es: "1️⃣ Abre un explorer de testnet\n2️⃣ Pega tu dirección (r...)\n3️⃣ Verás:\n   • Balance en XAH\n   • Tokens y trust lines\n   • Historial de transacciones\n   • Flags y configuración\n\nTambién puedes buscar por hash de transacción",
             en: "1️⃣ Open a testnet explorer\n2️⃣ Paste your address (r...)\n3️⃣ You will see:\n   • Balance in XAH\n   • Tokens and trust lines\n   • Transaction history\n   • Flags and configuration\n\nYou can also search by transaction hash",
-            jp: "",
+            jp: "1️⃣ テストネットのエクスプローラーを開く\n2️⃣ アドレス（r...）を貼り付ける\n3️⃣ 表示される情報：\n   • XAHの残高\n   • トークンとトラストライン\n   • トランザクション履歴\n   • フラグと設定\n\nトランザクションハッシュで検索することもできます",
           },
           visual: "📋",
         },
@@ -587,7 +783,7 @@ Each transaction has a unique **hash** (a long hexadecimal string). You can sear
       title: {
         es: "Seguridad de wallets y buenas prácticas",
         en: "Wallet security and best practices",
-        jp: "",
+        jp: "ウォレットのセキュリティとベストプラクティス",
       },
       theory: {
         es: `La seguridad de tu wallet es lo más importante al trabajar con blockchain. Una wallet comprometida significa la **pérdida total e irreversible** de tus fondos. En esta lección aprenderás las mejores prácticas para proteger tu cuenta.
@@ -784,43 +980,139 @@ Multi-signing is ideal for:
 - Organization treasuries
 - Shared accounts between partners
 - Any situation where a single person should not have total control`,
-        jp: "",
+        jp: `ブロックチェーンで作業する際、ウォレットのセキュリティは最も重要なことです。ウォレットが侵害されると、資金の**完全かつ不可逆的な損失**を意味します。このレッスンでは、アカウントを保護するためのベストプラクティスを学びます。
+
+### シード／秘密鍵を絶対に共有しないこと
+
+あなたのシード（秘密鍵）は、**アカウントをコントロールする唯一の方法**です。あなたのシードを持っている人は、あなたの代わりにあらゆるトランザクションに署名できます：すべての資金を送ったり、設定を変更したりなど。これを元に戻す方法はありません。
+
+基本ルール：
+- チャット、メール、その他のデジタル手段でシードを**絶対に**送らない
+- 絶対に信頼できないWebサイトやアプリケーションには**絶対に**入力しない
+- コンピュータにプレーンテキストで**絶対に**保存しない
+- シードのスクリーンショットや写真を**絶対に**撮らない
+
+### ホットウォレット vs コールドウォレット
+
+**ホットウォレット（Hot Wallet）**：
+- 常時インターネットに接続している
+- 頻繁なトランザクションに便利
+- 侵害されるリスクが高い
+- 例：Webアプリケーション内のウォレット、トレーディングボット
+
+**コールドウォレット（Cold Wallet）**：
+- インターネットから切断されている
+- 長期保管のための最高のセキュリティ
+- 日常使用には不便
+- 例：オフラインで生成されたウォレット、ハードウェアウォレット、ペーパーウォレット
+
+### シードの保管に関するベストプラクティス
+
+1. **オフライン**：インターネットに接続したことのないデバイスでシードを生成・保管する
+2. **ハードウェアウォレット**：鍵を安全に保管する専用デバイス（Ledger、Trezorなど）
+3. **ペーパーウォレット**：シードを紙に書き、安全な場所（金庫、銀行の貸金庫）に保管する
+4. **複数のコピー**：火災、洪水などに備えて、異なる物理的な場所にコピーを保管する
+5. **メタルバックアップ**：耐火・耐水性のある金属プレートにシードを刻む
+
+### テストネットのシード：例外
+
+**テストネット**のシードは教育的なコンテキストで共有しても安全です。理由：
+- テストネットのトークンは**実際の価値がない**
+- テストネットはいつでもリセットできる
+- 他の開発者との問題のデバッグに役立つ
+
+それでも、良い習慣を身につけるために、注意して扱うことが推奨されます。
+
+### よくある詐欺とその回避方法
+
+**フィッシング（Phishing）**：
+- 正規のインターフェースを模倣した偽のWebサイト
+- アカウントを「確認する」ためにシードを入力するよう求める
+- URLを必ず確認し、不審なリンクはクリックしない
+
+**偽のdApps**：
+- 非現実的なリターンを約束するアプリケーション
+- 過剰な権限やシードを直接要求する
+- 常にソースコードとプロジェクトの評判を調査する
+
+**ソーシャルエンジニアリング**：
+- テクニカルサポートを装った人物
+- シードと引き換えに「助け」を申し出る
+- 正規のサポートはあなたの秘密鍵を求めることは絶対にない
+
+**偽のエアドロップ**：
+- 要求していないのにウォレットに現れるトークン
+- 操作しようとすると悪意のあるサイトにリダイレクトされる
+- 受け取ることを期待していない未知のトークンは無視する
+
+### レギュラーキー：署名鍵の変更
+
+Xahauは**レギュラーキー（Regular Key）**と呼ばれる高度な機能を提供しています：アカウントの代わりにトランザクションに署名する権限を持つ**代替キーペア**を割り当てることができます。
+
+利点：
+- レギュラーキーが侵害されても、アドレスを変更せずに新しいキーに変更できる
+- マスターキーを無効にして、日常業務にはレギュラーキーのみを使用できる
+- アカウントのアドレスは変わらない
+
+### マスターキーの無効化：高度なセキュリティ
+
+最高のセキュリティのために、**マスターキーを無効化**（master key disable）することができます：
+1. まず、レギュラーキーを設定する
+2. 次に、アカウントフラグでマスターキーを無効にする
+3. これにより、レギュラーキーのみがトランザクションに署名できる
+4. レギュラーキーが侵害された場合、マスターキーを再アクティベートしてコントロールを取り戻せる
+
+これは追加の保護レイヤーを加えます：誰かがマスターシードを入手しても、無効化されている間は使用できません。
+
+### マルチシグニング：複数の署名
+
+高額アカウントやガバナンス用に、Xahauは**マルチシグニング（multi-signing）**をサポートしています：
+
+- 承認された署名者のリストと**クォーラム**（必要な最小ウェイト）を設定する
+- 各署名者には重みが割り当てられる
+- トランザクションはクォーラムに達するのに十分な署名を受け取った場合にのみ有効
+- 例：各重み1の3人の署名者、クォーラム2 → 3人中少なくとも2人の署名が必要
+
+マルチシグニングに適した用途：
+- 組織の資金管理
+- パートナー間の共有アカウント
+- 一人の人物が完全な管理権を持つべきでない状況`,
       },
       codeBlocks: [],
       slides: [
         {
-          title: { es: "La regla de oro", en: "The golden rule", jp: "" },
+          title: { es: "La regla de oro", en: "The golden rule", jp: "黄金のルール" },
           content: {
             es: "NUNCA compartas tu seed/clave privada\n\n❌ No por chat ni email\n❌ No en sitios web dudosos\n❌ No en texto plano en tu PC\n❌ No en capturas de pantalla\n\nQuien tiene tu seed\ntiene TODOS tus fondos",
             en: "NEVER share your seed/private key\n\n❌ Not via chat or email\n❌ Not on suspicious websites\n❌ Not in plain text on your PC\n❌ Not in screenshots\n\nWhoever has your seed\nhas ALL your funds",
-            jp: "",
+            jp: "シード／秘密鍵を絶対に共有しない\n\n❌ チャットやメールでの共有禁止\n❌ 怪しいWebサイトへの入力禁止\n❌ PCにプレーンテキストで保存禁止\n❌ スクリーンショット撮影禁止\n\nあなたのシードを持っている人が\nあなたの全財産を持っている",
           },
           visual: "🔒",
         },
         {
-          title: { es: "Hot Wallet vs Cold Wallet", en: "Hot Wallet vs Cold Wallet", jp: "" },
+          title: { es: "Hot Wallet vs Cold Wallet", en: "Hot Wallet vs Cold Wallet", jp: "ホットウォレット vs コールドウォレット" },
           content: {
             es: "🔥 Hot Wallet (conectada)\n• Conveniente para uso diario\n• Mayor riesgo\n• Apps, bots de trading\n\n🧊 Cold Wallet (desconectada)\n• Máxima seguridad\n• Almacenamiento largo plazo\n• Hardware wallet, papel, metal",
             en: "🔥 Hot Wallet (connected)\n• Convenient for daily use\n• Higher risk\n• Apps, trading bots\n\n🧊 Cold Wallet (disconnected)\n• Maximum security\n• Long-term storage\n• Hardware wallet, paper, metal",
-            jp: "",
+            jp: "🔥 ホットウォレット（接続済み）\n• 日常使用に便利\n• リスクが高い\n• アプリ、トレーディングボット\n\n🧊 コールドウォレット（切断済み）\n• 最高のセキュリティ\n• 長期保管\n• ハードウェアウォレット、紙、金属",
           },
           visual: "🔥",
         },
         {
-          title: { es: "Estafas comunes", en: "Common scams", jp: "" },
+          title: { es: "Estafas comunes", en: "Common scams", jp: "よくある詐欺" },
           content: {
             es: "🎣 Phishing → Sitios web falsos\n🤖 Fake dApps → Rendimientos irreales\n🎭 Ingeniería social → Falso soporte\n🪂 Airdrops falsos → Tokens trampa\n\nRegla: NADIE legítimo te pedirá\ntu clave privada. Jamás.",
             en: "🎣 Phishing → Fake websites\n🤖 Fake dApps → Unrealistic returns\n🎭 Social engineering → Fake support\n🪂 Fake airdrops → Trap tokens\n\nRule: NOBODY legitimate will ask\nfor your private key. Ever.",
-            jp: "",
+            jp: "🎣 フィッシング → 偽のWebサイト\n🤖 偽のdApps → 非現実的なリターン\n🎭 ソーシャルエンジニアリング → 偽サポート\n🪂 偽のエアドロップ → トラップトークン\n\nルール：正規の関係者が\nあなたの秘密鍵を求めることは絶対にない",
           },
           visual: "⚠️",
         },
         {
-          title: { es: "Seguridad avanzada en Xahau", en: "Advanced security in Xahau", jp: "" },
+          title: { es: "Seguridad avanzada en Xahau", en: "Advanced security in Xahau", jp: "Xahauの高度なセキュリティ" },
           content: {
             es: "🔑 Regular Key\n  Clave alternativa para firmar\n  (se puede cambiar sin cambiar dirección)\n\n🚫 Master Key Disable\n  Desactivar la clave maestra\n  (capa extra de protección)\n\n👥 Multi-signing\n  Múltiples firmas requeridas\n  (ideal para organizaciones)",
             en: "🔑 Regular Key\n  Alternative key for signing\n  (can be changed without changing address)\n\n🚫 Master Key Disable\n  Disable the master key\n  (extra layer of protection)\n\n👥 Multi-signing\n  Multiple signatures required\n  (ideal for organizations)",
-            jp: "",
+            jp: "🔑 レギュラーキー\n  署名用の代替キー\n  （アドレスを変えずに変更可能）\n\n🚫 マスターキーの無効化\n  マスターキーを無効にする\n  （追加の保護レイヤー）\n\n👥 マルチシグニング\n  複数の署名が必要\n  （組織に最適）",
           },
           visual: "🛡️",
         },
@@ -831,7 +1123,7 @@ Multi-signing is ideal for:
       title: {
         es: "Configuración de tu cuenta con AccountSet",
         en: "Configuring your account with AccountSet",
-        jp: "",
+        jp: "AccountSetを使ったアカウント設定",
       },
       theory: {
         es: `En Xahau, tu cuenta tiene múltiples opciones de configuración que puedes activar o desactivar usando la transacción **AccountSet**. Estas configuraciones controlan el comportamiento de tu cuenta frente a pagos entrantes, trust lines, y más.
@@ -930,14 +1222,61 @@ Account flags are stored as a numeric field where each bit represents a flag. Yo
 | asfDisallowXRP | 3 | Signal that XAH is not desired |
 | asfDisableMaster | 4 | Disable master key |
 | asfDefaultRipple | 8 | Allow rippling of issued tokens |`,
-        jp: "",
+        jp: `Xahauでは、**AccountSet**トランザクションを使用して、アカウントの複数の設定オプションを有効化または無効化できます。これらの設定は、着信ペイメント、トラストラインなどに対するアカウントの動作を制御します。
+
+### AccountSetトランザクション
+
+\`AccountSet\`はアカウントのプロパティを変更できるトランザクションタイプです。資金の送受信は行わず、アカウントの**フラグ**やその他の設定フィールドを変更するだけです。
+
+### 重要なフラグ
+
+**asfRequireDest（RequireDestTag）**
+- すべての着信ペイメントに**デスティネーションタグ**を含めることを要求する
+- タグを使用してユーザーを識別する取引所やサービスに役立つ
+- このフラグがないと、タグなしでXAHを送ることができ、誰から来たかを知ることが不可能になる
+- フラグID：\`1\`
+
+**asfDisallowXRP（DisallowXAH）**
+- アカウントが**XAHを直接受け取ることを希望しない**ことを示す
+- これは信号に過ぎず、技術的にはペイメントはまだ到達できる
+- 発行されたトークン（IOU）のみを扱うアカウントに役立つ
+- フラグID：\`3\`
+
+**asfDefaultRipple**
+- **トークン発行者**に関連（トークンモジュールで詳しく学びます）
+- アカウントが発行したトークンが第三者間で流れることを可能にする（リップリング）
+- このフラグがないと、トークンは発行者との間でのみ直接移動できる
+- フラグID：\`8\`
+
+**asfRequireAuth**
+- 誰かがあなたのトークンを保有できる前に、アカウントが各トラストラインを**承認**することを要求する
+- 保有者をコントロールする必要がある規制されたトークンに役立つ
+- フラグID：\`2\`
+
+### その他の設定可能なフィールド
+
+**ドメイン**：アカウントにWebドメインを関連付けることができます。ドメインの16進数値として保存されます。これにより、アカウントがそのドメインの所有者に属することを確認できます。
+
+**EmailHash**：メールのMD5ハッシュで、アバターの表示に使用されます（Gravatarのような）。メールアドレスを直接公開しません。
+
+### ビットとしてのフラグ
+
+アカウントフラグは、各ビットがフラグを表す数値フィールドとして保存されます。AccountSetトランザクションの\`SetFlag\`フィールドでフラグを有効化し、\`ClearFlag\`で無効化できます。
+
+| フラグ | ID | 目的 |
+|--------|-----|------|
+| asfRequireDest | 1 | デスティネーションタグを要求 |
+| asfRequireAuth | 2 | トラストラインの承認を要求 |
+| asfDisallowXRP | 3 | XAHの受け取りを希望しないことを示す |
+| asfDisableMaster | 4 | マスターキーを無効化 |
+| asfDefaultRipple | 8 | 発行されたトークンのリップリングを許可 |`,
       },
       codeBlocks: [
         {
           title: {
             es: "Activar el flag RequireDestTag en tu cuenta",
             en: "Enable the RequireDestTag flag on your account",
-            jp: "",
+            jp: "アカウントにRequireDestTagフラグを設定する",
           },
           language: "javascript",
           code: {
@@ -1035,14 +1374,60 @@ async function setRequireDestTag() {
 }
 
 setRequireDestTag();`,
-            jp: "",
+            jp: `const { Client, Wallet } = require("xahau");
+
+async function setRequireDestTag() {
+  const client = new Client("wss://xahau-test.net");
+  await client.connect();
+
+  // テストネットのウォレットを使用（シードを置き換えてください）
+  const wallet = Wallet.fromSeed("sEdVHBhkL2next8NH9cMPyPJoXXXXXX", {algorithm: 'secp256k1'});
+
+  // RequireDestTagを有効にするためのSetFlagを持つAccountSet
+  const tx = {
+    TransactionType: "AccountSet",
+    Account: wallet.address,
+    // asfRequireDest = 1
+    SetFlag: 1,
+  };
+  console.log("アカウント：", wallet.address);
+  console.log("AccountSetトランザクションを送信中...");
+  console.log("  フラグを有効化：RequireDestTag (asfRequireDest = 1)");
+
+  const result = await client.submitAndWait(tx, { wallet });
+
+  console.log("結果：", result.result.meta.TransactionResult);
+
+  if (result.result.meta.TransactionResult === "tesSUCCESS") {
+    console.log("RequireDestTagフラグが正常に有効化されました！");
+    console.log("すべての着信ペイメントにDestinationTagが必要になりました。");
+
+    // フラグが有効化されたことを確認
+    const accountInfo = await client.request({
+      command: "account_info",
+      account: wallet.address,
+      ledger_index: "validated",
+    });
+
+    const flags = accountInfo.result.account_data.Flags;
+    console.log("アカウントのフラグ（数値）：", flags);
+
+    // lsfRequireDestTag = 0x00020000 = 131072
+    const requireDestTag = (flags & 0x00020000) !== 0;
+    console.log("RequireDestTag有効：", requireDestTag);
+  }
+
+  await client.disconnect();
+}
+
+setRequireDestTag();`,
           },
         },
         {
           title: {
             es: "Leer e interpretar los flags de una cuenta",
             en: "Read and interpret account flags",
-            jp: "",
+            jp: "アカウントのフラグを読み取り・解釈する",
           },
           language: "javascript",
           code: {
@@ -1184,26 +1569,94 @@ async function readAccountFlags(address) {
 
 // Replace with a testnet address
 readAccountFlags("rYourXahauAddressHere");`,
-            jp: "",
+            jp: `const { Client } = require("xahau");
+
+async function readAccountFlags(address) {
+  const client = new Client("wss://xahau-test.net");
+  await client.connect();
+
+  try {
+    const response = await client.request({
+      command: "account_info",
+      account: address,
+      ledger_index: "validated",
+    });
+
+    const account = response.result.account_data;
+    const flags = account.Flags;
+
+    console.log("=== アカウント情報 ===");
+    console.log("アドレス：", account.Account);
+    console.log("残高：", Number(account.Balance) / 1_000_000, "XAH");
+    console.log("フラグ（数値）：", flags);
+    console.log("");
+
+    // 各フラグを個別に解釈する
+    // レジャーフラグ（lsf）はAccountSetフラグ（asf）とは異なる値を持つ
+    const flagDefinitions = [
+      { name: "lsfRequireDestTag", mask: 0x00020000, desc: "デスティネーションタグを要求" },
+      { name: "lsfRequireAuth", mask: 0x00040000, desc: "トラストラインの承認を要求" },
+      { name: "lsfDisallowXRP", mask: 0x00080000, desc: "XAHを受け取ることを希望しない" },
+      { name: "lsfDisableMaster", mask: 0x00100000, desc: "マスターキーが無効" },
+      { name: "lsfDefaultRipple", mask: 0x00800000, desc: "デフォルトリップリングが有効" },
+    ];
+
+    console.log("=== 有効なフラグ ===");
+    let anyActive = false;
+    for (const flag of flagDefinitions) {
+      const active = (flags & flag.mask) !== 0;
+      if (active) {
+        console.log(\` \${flag.name}: \${flag.desc}\`);
+        anyActive = true;
+      }
+    }
+
+    if (!anyActive) {
+      console.log("  特別なフラグなし（デフォルト設定）");
+    }
+
+    console.log("");
+    console.log("=== その他のフィールド ===");
+    console.log("ドメイン：", account.Domain
+      ? Buffer.from(account.Domain, "hex").toString("utf-8")
+      : "（未設定）");
+    console.log("EmailHash：", account.EmailHash || "（未設定）");
+    console.log("RegularKey：", account.RegularKey || "（未設定）");
+    console.log("シーケンス：", account.Sequence);
+    console.log("OwnerCount：", account.OwnerCount);
+
+  } catch (error) {
+    if (error.data?.error === "actNotFound") {
+      console.log("アカウントはレジャーに存在しません。");
+    } else {
+      console.error("エラー：", error.message);
+    }
+  }
+
+  await client.disconnect();
+}
+
+// テストネットのアドレスに置き換えてください
+readAccountFlags("rYourXahauAddressHere");`,
           },
         },
       ],
       slides: [
         {
-          title: { es: "AccountSet: configura tu cuenta", en: "AccountSet: configure your account", jp: "" },
+          title: { es: "AccountSet: configura tu cuenta", en: "AccountSet: configure your account", jp: "AccountSet：アカウントを設定する" },
           content: {
             es: "La transacción AccountSet modifica\nlos flags y propiedades de tu cuenta\n\nFlags principales:\n🏷️ RequireDestTag → Exigir tag en pagos\n🚫 DisallowXAH → Señal de no recibir XAH\n🔄 DefaultRipple → Para emisores de tokens\n🔐 RequireAuth → Autorizar trust lines",
             en: "The AccountSet transaction modifies\nyour account's flags and properties\n\nMain flags:\n🏷️ RequireDestTag → Require tag on payments\n🚫 DisallowXAH → Signal not to receive XAH\n🔄 DefaultRipple → For token issuers\n🔐 RequireAuth → Authorize trust lines",
-            jp: "",
+            jp: "AccountSetトランザクションは\nアカウントのフラグとプロパティを変更する\n\n主なフラグ：\n🏷️ RequireDestTag → ペイメントにタグを要求\n🚫 DisallowXAH → XAHを受け取らない信号\n🔄 DefaultRipple → トークン発行者向け\n🔐 RequireAuth → トラストラインを承認する",
           },
           visual: "⚙️",
         },
         {
-          title: { es: "Flags como bits", en: "Flags as bits", jp: "" },
+          title: { es: "Flags como bits", en: "Flags as bits", jp: "ビットとしてのフラグ" },
           content: {
             es: "Los flags se almacenan como un número binario\nCada bit = un flag diferente\n\nActivar: campo SetFlag + ID del flag\nDesactivar: campo ClearFlag + ID del flag\n\n| Flag | ID |\n| RequireDest | 1 |\n| RequireAuth | 2 |\n| DisallowXRP | 3 |\n| DisableMaster | 4 |\n| DefaultRipple | 8 |",
             en: "Flags are stored as a binary number\nEach bit = a different flag\n\nEnable: SetFlag field + flag ID\nDisable: ClearFlag field + flag ID\n\n| Flag | ID |\n| RequireDest | 1 |\n| RequireAuth | 2 |\n| DisallowXRP | 3 |\n| DisableMaster | 4 |\n| DefaultRipple | 8 |",
-            jp: "",
+            jp: "フラグはバイナリ数値として保存される\n各ビット = 異なるフラグ\n\n有効化：SetFlagフィールド + フラグID\n無効化：ClearFlagフィールド + フラグID\n\n| フラグ | ID |\n| RequireDest | 1 |\n| RequireAuth | 2 |\n| DisallowXRP | 3 |\n| DisableMaster | 4 |\n| DefaultRipple | 8 |",
           },
           visual: "🔢",
         },
@@ -1214,7 +1667,7 @@ readAccountFlags("rYourXahauAddressHere");`,
       title: {
         es: "Cómo importar tu cuenta en Xaman",
         en: "How to import your account into Xaman",
-        jp: "",
+        jp: "Xamanへのアカウントのインポート方法",
       },
       theory: {
         es: `**Xaman** (anteriormente XUMM) es la wallet móvil más utilizada del ecosistema XRPL y Xahau. Hasta ahora hemos trabajado con wallets desde código JavaScript, pero para gestionar tu cuenta de forma visual, firmar transacciones desde el móvil e interactuar con aplicaciones descentralizadas, necesitas importar tu cuenta en Xaman.
@@ -1401,14 +1854,105 @@ This is useful for:
 - Monitoring other accounts (exchanges, contracts)
 - Watching your mainnet account without exposing the seed on your phone
 - Checking balances quickly`,
-        jp: "",
+        jp: `**Xaman**（以前はXUMM）は、XRPLおよびXahauエコシステムで最も広く使用されているモバイルウォレットです。これまでJavaScriptコードからウォレットを操作してきましたが、アカウントを視覚的に管理し、スマートフォンからトランザクションに署名し、分散型アプリケーションと対話するには、アカウントをXamanにインポートする必要があります。
+
+### Xamanとは？
+
+Xamanは**iOS**と**Android**で利用できるモバイルアプリケーションで、以下として機能します：
+- **ウォレット**：デバイス上に鍵を安全に保存
+- **トランザクション署名者**：QRコードのスキャンまたはxAppからトランザクションを承認できる
+- **アカウントマネージャー**：複数のXahauおよびXRPLアカウントを管理できる
+- **xAppsへのゲートウェイ**：Xamanに統合された分散型アプリケーション
+
+ダウンロード：[xaman.app](https://xaman.app)
+
+### Xamanのインストール
+
+1. **App Store**（iOS）または**Google Play**（Android）を開く
+2. **「Xaman」**を検索（以前はXUMMという名前でした）
+3. アプリをダウンロードしてインストール
+4. Xamanを開き、初期設定に従う：
+   - **PINコード**または**生体認証**（指紋/Face ID）を設定する
+   - 利用規約に同意する
+
+### テストネットアカウントのインポート
+
+Xamanをインストールしたら、コードで生成したアカウントを**ファミリーシード**（\`s\`で始まる文字列）を使用してインポートできます：
+
+1. Xamanを開く
+2. **「アカウントを追加」**ボタン（または上部の\`+\`アイコン）をタップ
+3. **「既存のアカウントをインポート」**を選択
+4. インポート方法として**「Family Seed（s...）」**を選択
+5. シード（ウォレット生成時に取得した\`s\`で始まる文字列）を入力
+6. アクセスレベルを選択：
+   - **フルアクセス**：トランザクションに署名できる（シードが必要）
+   - **読み取り専用**：残高とトランザクションのみ確認できる（アドレスのみ必要）
+7. PINまたは生体認証で確認
+8. アカウントがXamanのアカウントリストに表示される
+
+### XamanにXahauネットワークを追加する
+
+デフォルトでは、Xamanは**XRPLメインネット**に接続しています。**Xahau**で作業するには、ネットワークを追加する必要があります：
+
+1. Xamanで**設定**（歯車アイコン）に移動
+2. **「Advanced」（詳細）**セクションを見つける
+3. **「Debug」**セクションを見つける
+4. **開発者モード（Developer Mode）**を有効にする
+5. メインメニューで右上隅をタップして**Xahau Testnet**をアクティブネットワークとして選択する
+6. これでアカウントにテストネットのXAH残高が表示される
+
+### インポートの確認
+
+インポート後、すべてが正しいことを確認する：
+- Xamanが表示する**アドレス**がコードで生成したものと一致するか確認する
+- 署名が機能することを確認するために、小さなテストトランザクションを送信できる
+
+### Xamanでトランザクションに署名する
+
+Xamanは2つの方法でトランザクションに署名できます：
+
+**アプリから直接**：
+- Xamanから直接ペイメントを送れる
+- **「送信」**をタップし、送信先アドレスと金額を入力
+- PINまたは生体認証で確認
+
+**xAppまたはWebサイト（QR）から**：
+- 一部のアプリケーションがQRコードを表示する
+- XamanでQRをスキャンする
+- Xamanがトランザクションの詳細を表示する
+- PINで署名して承認または拒否する
+
+### Xamanのセキュリティ
+
+- シードは**デバイスから絶対に出ない**。Xamanはオペレーティングシステムのセキュアストレージ（iOSではKeychain、AndroidではKeystore）に暗号化された形式で鍵を保存する
+- トランザクションはデバイス上で**ローカルに署名される**
+- Xamanは秘密鍵をサーバーに**送信することはない**
+- デバイスを紛失した場合、シードを使用して別のデバイスでアカウントを復元できる
+- **シードのコピーを常にデバイス外に保管する**（紙、金属バックアップ）
+- Xamanはセキュリティのためにアプリからシードをエクスポートできないため、インポート前に保存してあることを確認すること
+
+
+### 読み取り専用でのインポート
+
+トランザクションに署名せずにアカウントを**監視**だけしたい場合：
+
+1. Xamanで**「アカウントを追加」**をタップ
+2. **「既存のアカウントをインポート」**を選択
+3. **「アカウントアドレス（r...）」**を選択
+4. アドレス\`r...\`を入力（シードではない）
+5. アカウントが読み取り専用モードで追加される
+
+これは以下に役立つ：
+- 他のアカウント（取引所、コントラクト）の監視
+- スマートフォンでシードを公開せずにメインネットアカウントを監視する
+- 残高をすばやく確認する`,
       },
       codeBlocks: [
         {
           title: {
             es: "Generar una wallet y preparar datos para importar en Xaman",
             en: "Generate a wallet and prepare data for importing into Xaman",
-            jp: "",
+            jp: "ウォレットを生成してXamanにインポートするためのデータを準備する",
           },
           language: "javascript",
           code: {
@@ -1486,35 +2030,71 @@ async function prepareForXaman() {
 }
 
 prepareForXaman();`,
-            jp: "",
+            jp: `const { Client, Wallet } = require("xahau");
+
+async function prepareForXaman() {
+  const client = new Client("wss://xahau-test.net");
+  await client.connect();
+
+  // ウォレットを生成して資金を供給する
+  const wallet = Wallet.generate();
+  console.log("テストネットウォレットを生成中...");
+  await client.fundWallet(wallet);
+
+  // 残高を確認する
+  const response = await client.request({
+    command: "account_info",
+    account: wallet.address,
+    ledger_index: "validated",
+  });
+
+  const balance = Number(response.result.account_data.Balance) / 1_000_000;
+
+  console.log("=== Xamanにインポートするためのデータ ===");
+  console.log("アドレス：", wallet.address);
+  console.log("シード：", wallet.seed);
+  console.log("残高：", balance, "XAH");
+  console.log("=== 手順 ===");
+  console.log("1. スマートフォンでXamanを開く");
+  console.log("2. 「アカウントを追加」→「既存のアカウントをインポート」をタップ");
+  console.log("4. 「フルアクセス」を選択");
+  console.log("5. 「Family Seed（s...）」を選択");
+  console.log("6. シードを入力：", wallet.seed);
+  console.log("  注意：テストネットを使用しています。");
+  console.log("    Xamanで必ずXahau Testnetネットワークを選択してください。");
+
+  await client.disconnect();
+}
+
+prepareForXaman();`,
           },
         },
       ],
       slides: [
         {
-          title: { es: "¿Qué es Xaman?", en: "What is Xaman?", jp: "" },
+          title: { es: "¿Qué es Xaman?", en: "What is Xaman?", jp: "Xamanとは？" },
           content: {
             es: "Wallet móvil del ecosistema XRPL/Xahau\n\n• iOS y Android\n• Almacena claves de forma segura\n• Firma transacciones desde el móvil\n• Gestiona múltiples cuentas\n• Acceso a xApps\n\nDescarga: xaman.app",
             en: "Mobile wallet for the XRPL/Xahau ecosystem\n\n• iOS and Android\n• Stores keys securely\n• Sign transactions from your phone\n• Manage multiple accounts\n• Access to xApps\n\nDownload: xaman.app",
-            jp: "",
+            jp: "XRPL/Xahauエコシステムのモバイルウォレット\n\n• iOSとAndroid\n• 鍵を安全に保存\n• スマートフォンからトランザクションに署名\n• 複数のアカウントを管理\n• xAppsへのアクセス\n\nダウンロード：xaman.app",
           },
           visual: "📱",
         },
         {
-          title: { es: "Importar tu cuenta", en: "Import your account", jp: "" },
+          title: { es: "Importar tu cuenta", en: "Import your account", jp: "アカウントのインポート" },
           content: {
             es: "1️⃣ Abre Xaman → 'Añadir cuenta'\n2️⃣ 'Importar cuenta existente'\n3️⃣ Elige 'Acceso completo'\n4️⃣ Selecciona 'Family Seed (s...)\n5️⃣ Introduce tu seed\n6️⃣ Confirma con PIN/biometría\n\n⚠️ Selecciona red Xahau Testnet\nen Ajustes → Redes",
             en: "1️⃣ Open Xaman → 'Add account'\n2️⃣ 'Import existing account'\n3️⃣ Choose 'Full access'\n4️⃣ Select 'Family Seed (s...)'\n5️⃣ Enter your seed\n6️⃣ Confirm with PIN/biometrics\n\n⚠️ Select Xahau Testnet network\nin Settings → Networks",
-            jp: "",
+            jp: "1️⃣ Xamanを開く → 「アカウントを追加」\n2️⃣ 「既存のアカウントをインポート」\n3️⃣ 「フルアクセス」を選択\n4️⃣ 「Family Seed（s...）」を選択\n5️⃣ シードを入力\n6️⃣ PINまたは生体認証で確認\n\n⚠️ 設定 → ネットワークで\nXahau Testnetネットワークを選択",
           },
           visual: "🔑",
         },
         {
-          title: { es: "Seguridad en Xaman", en: "Security in Xaman", jp: "" },
+          title: { es: "Seguridad en Xaman", en: "Security in Xaman", jp: "Xamanのセキュリティ" },
           content: {
             es: "🔐 El seed NUNCA sale del dispositivo\n📲 Firma local (no envía claves a servidores)\n🔒 Almacenamiento encriptado (Keychain/Keystore)\n\nModos de importación:\n• Acceso completo → Firmar transacciones\n• Solo lectura → Solo ver balance\n\n💡 Guarda siempre una copia del seed\nfuera del dispositivo",
             en: "🔐 The seed NEVER leaves the device\n📲 Local signing (does not send keys to servers)\n🔒 Encrypted storage (Keychain/Keystore)\n\nImport modes:\n• Full access → Sign transactions\n• Read-only → Only view balance\n\n💡 Always keep a copy of the seed\noutside the device",
-            jp: "",
+            jp: "🔐 シードはデバイスから絶対に出ない\n📲 ローカル署名（サーバーに鍵を送信しない）\n🔒 暗号化されたストレージ（Keychain/Keystore）\n\nインポートモード：\n• フルアクセス → トランザクションに署名\n• 読み取り専用 → 残高のみ確認\n\n💡 シードのコピーを\n常にデバイス外に保管する",
           },
           visual: "🛡️",
         },

@@ -4,7 +4,7 @@ export default {
   title: {
     es: "Anatomía de una transacción",
     en: "Anatomy of a transaction",
-    jp: "",
+    jp: "トランザクションの解剖",
   },
   lessons: [
     {
@@ -12,7 +12,7 @@ export default {
       title: {
         es: "Ciclo de vida de una transacción",
         en: "Lifecycle of a transaction",
-        jp: "",
+        jp: "トランザクションのライフサイクル",
       },
       theory: {
         es: `Antes de profundizar en tokens, NFTs o smart contracts, es fundamental entender **cómo funciona una transacción de principio a fin** en Xahau. Este conocimiento te ayudará a diagnosticar problemas y construir aplicaciones robustas.
@@ -159,14 +159,85 @@ Unlike blockchains with probabilistic finality (Bitcoin, Ethereum), in Xahau the
 - If a transaction is included in a validated ledger, it is **final**
 - There are no reorgs, no forks, no "pending confirmations"
 - \`tesSUCCESS\` = guaranteed success, forever`,
-        jp: "",
+        jp: `トークン、NFT、スマートコントラクトに深入りする前に、Xahauにおける**トランザクションが最初から最後までどのように機能するか**を理解することが重要です。この知識は、問題の診断と堅牢なアプリケーションの構築に役立ちます。
+
+### 完全なフロー
+
+Xahauのトランザクションは、作成されてからレジャーに永久記録されるまで、**5つのフェーズ**を経ます：
+
+1. **構築（Build）**: トランザクションのフィールドを定義します（タイプ、送信元、宛先、金額など）
+2. **準備（autofill）**: クライアントが技術的フィールドを自動的に埋めます（Fee、Sequence、LastLedgerSequence、NetworkID）
+3. **署名（Sign）**: 秘密鍵がトランザクションを認可したことを証明する暗号署名を生成します
+4. **送信（Submit）**: 署名済みトランザクションをネットワークノードに送信します
+5. **検証（Validate）**: バリデーターがコンセンサスによりレジャーに含め、結果は最終的なものになります
+
+### フェーズ1：構築
+
+トランザクションのフィールドを含むJavaScriptオブジェクトを定義します：
+
+\`\`\`
+const tx = {
+  TransactionType: "Payment",
+  Account: "rSource...",
+  Destination: "rDestination...",
+  Amount: "1000000",
+};
+\`\`\`
+
+**必須フィールド**だけが必要です。技術的フィールドは次のフェーズで自動的に埋められます。
+
+### フェーズ2：準備（autofill）
+
+\`client.autofill(tx)\`メソッドがノードに問い合わせて不足フィールドを埋めます：
+
+- **Fee**: トランザクションコスト（drops単位）。現在のネットワーク負荷に基づいて計算されます
+- **Sequence**: アカウントのシーケンス番号（トランザクションごとに増加）
+- **LastLedgerSequence**: トランザクションを含められる最大レジャー番号（「ゴースト」トランザクションからの保護）
+- **NetworkID**: ネットワーク識別子（testnet対mainnet）
+
+### フェーズ3：署名
+
+\`wallet.sign(prepared)\`メソッドが以下を生成します：
+- **デジタル署名**：秘密鍵（ed25519またはsecp256k1）を使用
+- **tx_blob**：16進数形式でシリアライズされたトランザクション（送信可能な状態）
+
+署名は、**あなただけが**このトランザクションを認可したことを証明します。署名後にトランザクションを変更すると署名が無効になります。
+
+### フェーズ4：送信
+
+署名済みトランザクションは\`client.submit(tx_blob)\`または\`client.submitAndWait(tx_blob)\`でノードに送信されます：
+
+- **submit**：送信して即座に暫定結果を返します
+- **submitAndWait**：送信して、トランザクションが検証または拒否されるまで**待機**します
+
+ノードは他のネットワークノードにトランザクションを伝播します。
+
+### フェーズ5：検証（コンセンサス）
+
+ネットワークバリデーターが次のレジャーにトランザクションを含めるか決定します：
+
+1. トランザクションが**バリデーターのキュー**に届きます
+2. バリデーターが次のレジャーへの組み込みを提案します
+3. **UNLの80%以上**が合意すると、組み込まれます
+4. レジャーが閉じられ、結果は**最終的かつ不可逆**です
+
+### どのくらいかかる？
+
+送信から検証まで、通常**3〜5秒**かかります。これはXahauでレジャーが閉じるまでの時間です。ビットコインの10分ブロックや可変確認時間はありません。
+
+### ファイナリティ：不可逆の結果
+
+確率的なファイナリティを持つブロックチェーン（ビットコイン、イーサリアム）とは異なり、Xahauの結果は**決定論的**です：
+- 検証済みレジャーに含まれたトランザクションは**最終的**です
+- リオーグなし、フォークなし、「保留中の確認」なし
+- \`tesSUCCESS\` = 永遠に保証された成功`,
       },
       codeBlocks: [
         {
           title: {
             es: "Crear .env con la semilla de tu wallet",
             en: "Create .env with your wallet seed",
-            jp: "",
+            jp: "ウォレットのシードで.envを作成",
           },
           language: "bash",
           code: {
@@ -176,14 +247,16 @@ WALLET_SEED=sTuSeed`,
             en: `#Visit https://xahau-test.net/wallet to create a wallet on testnet y obtain your seed
 #Create a ".env" file in your project folder
 WALLET_SEED=sYourSeed`,
-            jp: "",
+            jp: `#テストネットウォレットを作成してシードを取得するには https://xahau-test.net/wallet を訪問してください
+#プロジェクトフォルダに".env"ファイルを作成してください
+WALLET_SEED=sYourSeed`,
           },
         },
         {
           title: {
             es: "El flujo completo paso a paso",
             en: "The complete flow step by step",
-            jp: "",
+            jp: "ステップバイステップの完全フロー",
           },
           language: "javascript",
           code: {
@@ -313,35 +386,97 @@ async function flujoCompleto() {
 }
 
 flujoCompleto().catch(console.error);`,
-            jp: "",
+            jp: `require("dotenv").config();
+const { Client, Wallet } = require("xahau");
+
+async function completeFlow() {
+  const client = new Client("wss://xahau-test.net");
+  await client.connect();
+
+  const wallet = Wallet.fromSeed(process.env.WALLET_SEED, {algorithm: 'secp256k1'});
+
+  // =============================================
+  // フェーズ1：トランザクションの構築
+  // =============================================
+  const tx = {
+    TransactionType: "Payment",
+    Account: wallet.address,
+    Destination: "rMXEZJecFdn1dVtE21pZ8duZz2E36KGaCp",
+    Amount: "5000000", // 5 XAH（drops単位）
+  };
+
+  console.log("1. トランザクション構築完了：");
+  console.log("   タイプ：", tx.TransactionType);
+  console.log("   定義フィールド数：", Object.keys(tx).length);
+
+  // =============================================
+  // フェーズ2：準備（autofill）
+  // =============================================
+  const prepared = await client.autofill(tx);
+
+  console.log("2. トランザクション準備完了（autofill）：");
+  console.log("   Fee：", prepared.Fee, "drops");
+  console.log("   Sequence：", prepared.Sequence);
+  console.log("   LastLedgerSequence：", prepared.LastLedgerSequence);
+  console.log("   NetworkID：", prepared.NetworkID);
+  console.log("   総フィールド数：", Object.keys(prepared).length);
+
+  // =============================================
+  // フェーズ3：署名
+  // =============================================
+  const signed = wallet.sign(prepared);
+
+  console.log("3. トランザクション署名完了：");
+  console.log("   ハッシュ：", signed.hash);
+  console.log("   tx_blob（最初の60文字）：", signed.tx_blob.substring(0, 60) + "...");
+  console.log("   blob長：", signed.tx_blob.length, "16進数文字");
+
+  // =============================================
+  // フェーズ4：送信
+  // =============================================
+  console.log("4. ノードに送信中...");
+  const result = await client.submitAndWait(signed.tx_blob);
+
+  // =============================================
+  // フェーズ5：検証済み結果
+  // =============================================
+  console.log("5. 検証済み結果：");
+  console.log("   TransactionResult：", result.result.meta.TransactionResult);
+  console.log("   レジャー：", result.result.ledger_index);
+  console.log("   影響ノード数：", result.result.meta.AffectedNodes.length);
+
+  await client.disconnect();
+}
+
+completeFlow().catch(console.error);`,
           },
         },
       ],
       slides: [
         {
-          title: { es: "5 fases de una transacción", en: "5 phases of a transaction", jp: "" },
+          title: { es: "5 fases de una transacción", en: "5 phases of a transaction", jp: "トランザクションの5フェーズ" },
           content: {
             es: "1. Construir → Definir campos (tipo, origen, destino)\n2. Preparar → autofill (Fee, Sequence, NetworkID)\n3. Firmar → Firma digital con clave privada\n4. Enviar → submit / submitAndWait\n5. Validar → Consenso → Resultado final",
             en: "1. Build → Define fields (type, source, destination)\n2. Prepare → autofill (Fee, Sequence, NetworkID)\n3. Sign → Digital signature with private key\n4. Submit → submit / submitAndWait\n5. Validate → Consensus → Final result",
-            jp: "",
+            jp: "1. 構築 → フィールド定義（タイプ、送信元、宛先）\n2. 準備 → autofill（Fee、Sequence、NetworkID）\n3. 署名 → 秘密鍵でデジタル署名\n4. 送信 → submit / submitAndWait\n5. 検証 → コンセンサス → 最終結果",
           },
           visual: "📋",
         },
         {
-          title: { es: "Autofill: campos automáticos", en: "Autofill: automatic fields", jp: "" },
+          title: { es: "Autofill: campos automáticos", en: "Autofill: automatic fields", jp: "Autofill：自動フィールド" },
           content: {
             es: "client.autofill() rellena por ti:\n\n• Fee → Coste según carga de red\n• Sequence → Número de tx de tu cuenta\n• LastLedgerSequence → Protección anti-fantasma\n• NetworkID → Testnet vs Mainnet",
             en: "client.autofill() fills in for you:\n\n• Fee → Cost based on network load\n• Sequence → Your account's tx number\n• LastLedgerSequence → Anti-ghost protection\n• NetworkID → Testnet vs Mainnet",
-            jp: "",
+            jp: "client.autofill()が自動入力：\n\n• Fee → ネットワーク負荷に基づくコスト\n• Sequence → アカウントのトランザクション番号\n• LastLedgerSequence → ゴースト対策保護\n• NetworkID → Testnet対Mainnet",
           },
           visual: "⚙️",
         },
         {
-          title: { es: "Finalidad determinista", en: "Deterministic finality", jp: "" },
+          title: { es: "Finalidad determinista", en: "Deterministic finality", jp: "決定論的ファイナリティ" },
           content: {
             es: "Validación en 3-5 segundos\n\n• Sin reorgs ni forks\n• Sin confirmaciones pendientes\n• tesSUCCESS = éxito para siempre\n• Resultado final e irreversible\n\nDiferente a Bitcoin/Ethereum (probabilístico)",
             en: "Validation in 3-5 seconds\n\n• No reorgs or forks\n• No pending confirmations\n• tesSUCCESS = success forever\n• Final and irreversible result\n\nDifferent from Bitcoin/Ethereum (probabilistic)",
-            jp: "",
+            jp: "3〜5秒で検証\n\n• リオーグやフォークなし\n• 保留中の確認なし\n• tesSUCCESS = 永遠の成功\n• 最終的かつ不可逆の結果\n\nビットコイン/イーサリアム（確率的）と異なる",
           },
           visual: "✅",
         },
@@ -352,7 +487,7 @@ flujoCompleto().catch(console.error);`,
       title: {
         es: "Campos de una transacción",
         en: "Transaction fields",
-        jp: "",
+        jp: "トランザクションのフィールド",
       },
       theory: {
         es: `Cada transacción en Xahau es un **objeto con campos específicos**. Algunos campos son obligatorios, otros opcionales, y otros los rellena \`autofill()\`. Entender cada campo te dará control total sobre tus transacciones.
@@ -517,14 +652,94 @@ You can attach data to any transaction using the **Memos** field:
 - Memos are **public** and permanent on the ledger
 - They do not affect the transaction logic, they only store additional information
 - If you do not need to use them, it is recommended to avoid these fields to prevent storing unnecessary data on the blockchain`,
-        jp: "",
+        jp: `Xahauのすべてのトランザクションは**特定のフィールドを持つオブジェクト**です。必須フィールド、任意フィールド、\`autofill()\`が埋めるフィールドがあります。各フィールドを理解することで、トランザクションを完全に制御できるようになります。
+
+### すべてのトランザクションに共通するフィールド
+
+これらのフィールドは**すべてのトランザクションタイプ**に存在します：
+
+| フィールド | 必須 | 説明 |
+|---|---|---|
+| **TransactionType** | はい | タイプ："Payment"、"TrustSet"、"OfferCreate"など |
+| **Account** | はい | あなたのアドレス（rXXX...）—トランザクションの送信者 |
+| **Fee** | 自動入力 | drops単位のコスト（1 XAH = 1,000,000 drops） |
+| **Sequence** | 自動入力 | アカウントのシーケンス番号 |
+| **LastLedgerSequence** | 自動入力 | トランザクションを含める最大レジャー番号 |
+| **NetworkID** | 自動入力 | ネットワークID（Xahau mainnetは21337） |
+| **SigningPubKey** | 自動（署名） | 公開鍵（署名時に追加） |
+| **TxnSignature** | 自動（署名） | デジタル署名（署名時に追加） |
+
+### TransactionType：トランザクションタイプ
+
+Xahauは多くのトランザクションタイプをサポートしています。最も一般的なもの：
+
+- [Payment](https://xahau.network/docs/protocol-reference/transactions/transaction-types/payment/) — XAHまたはトークンの送金
+- [TrustSet](https://xahau.network/docs/protocol-reference/transactions/transaction-types/trustset/) — トラストラインの作成または変更
+- [OfferCreate](https://xahau.network/docs/protocol-reference/transactions/transaction-types/offercreate/) — DEXでのオファー作成
+- [OfferCancel](https://xahau.network/docs/protocol-reference/transactions/transaction-types/offercancel/) — DEXオファーのキャンセル
+- [AccountSet](https://xahau.network/docs/protocol-reference/transactions/transaction-types/accountset/) — アカウントフラグの設定
+- [SetHook](https://xahau.network/docs/protocol-reference/transactions/transaction-types/sethook/) — Hookのインストールまたは管理（スマートコントラクト）
+- [URITokenMint](https://xahau.network/docs/protocol-reference/transactions/transaction-types/uritokenmint/) — NFTの作成（URIToken）
+- [URITokenBuy](https://xahau.network/docs/protocol-reference/transactions/transaction-types/uritokenbuy/) — URITokenの購入
+- [URITokenCreateSellOffer](https://xahau.network/docs/protocol-reference/transactions/transaction-types/uritokencreateselloffer/) — URITokenの販売出品
+- [EscrowCreate](https://xahau.network/docs/protocol-reference/transactions/transaction-types/escrowcreate/) — 条件付き支払いの作成
+- [EscrowFinish](https://xahau.network/docs/protocol-reference/transactions/transaction-types/escrowfinish/) — エスクローの完了
+- [EscrowCancel](https://xahau.network/docs/protocol-reference/transactions/transaction-types/escrowcancel/) — エスクローのキャンセル
+
+### Fee：トランザクションコスト
+
+XahauのFeeは他のブロックチェーンとは異なります：
+
+- **drops**で表現されます（1 XAH = 1,000,000 drops）
+- 基本Feeは**12 drops**（0.000012 XAH）—非常に安価
+- Feeは**バーン**されます—バリデーターや誰かに渡るのではなく、消却されます
+- ネットワークが混雑すると、Feeが一時的に上昇します（**フィーエスカレーション**）
+- \`autofill()\`が現在のネットワーク負荷に基づいて最適なFeeを計算します
+
+### Sequence：トランザクションの順序
+
+Sequenceはアカウントの**インクリメンタルカウンター**です：
+
+- アカウント有効化時に割り当てられた番号から開始します
+- 成功したトランザクションごとに1増加します
+- トランザクションが**順序通りに**処理されることを保証します
+- 同じSequenceで2つのトランザクションを送信した場合、1つだけ処理されます
+- 中間のSequenceが欠落した場合（例：5、6、8を送信して7がない）、7が解決されるまで8以降のトランザクションはキューに入ります
+
+### LastLedgerSequence：ゴーストトランザクション対策
+
+LastLedgerSequenceフィールドはトランザクションの**有効期限**です：
+
+- 含められる**最大レジャー番号**を指定します
+- 現在のレジャーがこの番号を超えてもトランザクションが処理されていない場合、廃棄されます
+- 「消えた」トランザクションが何分・何時間後かに実行されるのを防ぎます
+- \`autofill()\`が自動的に設定します（通常、現在のレジャー + 20）
+
+### Flags：動作修飾子
+
+多くのトランザクションタイプは、動作を変更する**Flags**フィールドを受け付けます：
+
+- FlagsはビットOR演算で組み合わせる**数値**です
+- 例：URITokenMintの\`Flags: 1\`で\`tfBurnable\`を有効化
+- 例：OfferCreateの\`Flags: 131072\`で\`tfImmediateOrCancel\`を有効化
+- 値を加算してフラグを組み合わせられます
+
+### Memos：添付データ
+
+**Memos**フィールドを使ってトランザクションにデータを添付できます：
+
+- **MemoType**：16進数のMIMEタイプ（例："text/plain"）
+- **MemoData**：16進数のコンテンツ
+- Memosは**公開**でレジャーに永久保存されます
+- トランザクションのロジックには影響せず、追加情報を保存するだけです
+- 必要でない場合は、ブロックチェーンに不必要なデータを保存しないためにこれらのフィールドの使用を避けることを推奨します`,
       },
       codeBlocks: [
         {
           title: {
             es: "Inspeccionar los campos antes y después de autofill",
             en: "Inspect fields before and after autofill",
-            jp: "",
+            jp: "autofill前後のフィールドを確認",
           },
           language: "javascript",
           code: {
@@ -610,14 +825,54 @@ async function checkFields() {
 }
 
 checkFields().catch(console.error);`,
-            jp: "",
+            jp: `require("dotenv").config();
+const { Client, Wallet } = require("xahau");
+
+async function checkFields() {
+  const client = new Client("wss://xahau-test.net");
+  await client.connect();
+
+  const wallet = Wallet.fromSeed(process.env.WALLET_SEED, {algorithm: 'secp256k1'});
+
+  // 必須フィールドのみのトランザクション
+  const tx = {
+    TransactionType: "Payment",
+    Account: wallet.address,
+    Destination: "rPTkQoZDeKMbwhs8QsRA1wL6gGA9Ee4C4",
+    Amount: "1000000", // 1 XAH
+  };
+
+  console.log("=== autofill前 ===");
+  console.log("定義フィールド：", Object.keys(tx));
+  console.log(JSON.stringify(tx, null, 2));
+
+  // autofillが技術的フィールドを埋める
+  const prepared = await client.autofill(tx);
+
+  console.log("=== autofill後 ===");
+  console.log("総フィールド：", Object.keys(prepared));
+  console.log(JSON.stringify(prepared, null, 2));
+
+  // autofillが追加したフィールドを表示
+  const newFields = Object.keys(prepared).filter(
+    (k) => !Object.keys(tx).includes(k)
+  );
+  console.log("=== autofillが追加したフィールド ===");
+  for (const field of newFields) {
+    console.log("  " + field + ":", prepared[field]);
+  }
+
+  await client.disconnect();
+}
+
+checkFields().catch(console.error);`,
           },
         },
         {
           title: {
             es: "Construir distintos tipos de transacción",
             en: "Build different transaction types",
-            jp: "",
+            jp: "異なるトランザクションタイプの構築",
           },
           language: "javascript",
           code: {
@@ -739,35 +994,93 @@ const mint = {
 
 console.log("Each type has its specific fields.");
 console.log("All share: TransactionType, Account, Fee, Sequence.");`,
-            jp: "",
+            jp: `// 異なるトランザクションタイプの構築例。
+// 必須フィールドのみを示します — autofill()が残りを埋めます。
+
+// --- Payment: XAHの送金 ---
+const payment = {
+  TransactionType: "Payment",
+  Account: "rOrigin...",
+  Destination: "rDestination...",
+  Amount: "5000000", // 5 XAH（drops単位）
+};
+
+// --- Payment: トークンの送金 ---
+const tokenPayment = {
+  TransactionType: "Payment",
+  Account: "rOrigin...",
+  Destination: "rDestination...",
+  Amount: {
+    currency: "USD",
+    value: "100",
+    issuer: "rIssuer...",
+  },
+};
+
+// --- TrustSet: トラストラインの作成 ---
+const trustSet = {
+  TransactionType: "TrustSet",
+  Account: "rReceiver...",
+  LimitAmount: {
+    currency: "USD",
+    value: "10000",
+    issuer: "rIssuer...",
+  },
+};
+
+// --- OfferCreate: DEXでのオファー作成 ---
+const offer = {
+  TransactionType: "OfferCreate",
+  Account: "rTrader...",
+  TakerPays: { currency: "USD", value: "50", issuer: "rIssuer..." },
+  TakerGets: "100000000", // 100 XAH
+};
+
+// --- AccountSet: フラグの有効化 ---
+const accountSet = {
+  TransactionType: "AccountSet",
+  Account: "rMyAccount...",
+  SetFlag: 8, // asfDefaultRipple
+};
+
+// --- URITokenMint: NFTの作成 ---
+const mint = {
+  TransactionType: "URITokenMint",
+  Account: "rCreator...",
+  URI: "68747470733A2F2F...", // 16進数のURL
+  Flags: 1, // tfBurnable
+};
+
+console.log("各タイプには固有のフィールドがあります。");
+console.log("共通フィールド：TransactionType、Account、Fee、Sequence。");`,
           },
         },
       ],
       slides: [
         {
-          title: { es: "Campos comunes", en: "Common fields", jp: "" },
+          title: { es: "Campos comunes", en: "Common fields", jp: "共通フィールド" },
           content: {
             es: "Toda transacción tiene:\n\n• TransactionType → Tipo de operación\n• Account → Quién envía\n• Fee → Coste (en drops, se quema)\n• Sequence → Orden de txs de la cuenta\n• LastLedgerSequence → Caducidad\n• NetworkID → Red (testnet/mainnet)",
             en: "Every transaction has:\n\n• TransactionType → Type of operation\n• Account → Who sends it\n• Fee → Cost (in drops, burned)\n• Sequence → Account tx ordering\n• LastLedgerSequence → Expiration\n• NetworkID → Network (testnet/mainnet)",
-            jp: "",
+            jp: "すべてのトランザクションに含まれる：\n\n• TransactionType → 操作タイプ\n• Account → 送信者\n• Fee → コスト（drops単位、バーン）\n• Sequence → アカウントのトランザクション順序\n• LastLedgerSequence → 有効期限\n• NetworkID → ネットワーク（testnet/mainnet）",
           },
           visual: "📝",
         },
         {
-          title: { es: "Tipos de transacción", en: "Transaction types", jp: "" },
+          title: { es: "Tipos de transacción", en: "Transaction types", jp: "トランザクションタイプ" },
           content: {
             es: "• Payment → Enviar XAH o tokens\n• TrustSet → Trust lines\n• OfferCreate/Cancel → DEX\n• AccountSet → Configurar cuenta\n• SetHook → Smart contracts\n• URITokenMint/Buy → NFTs\n• EscrowCreate/Finish → Pagos condicionales",
             en: "• Payment → Send XAH or tokens\n• TrustSet → Trust lines\n• OfferCreate/Cancel → DEX\n• AccountSet → Configure account\n• SetHook → Smart contracts\n• URITokenMint/Buy → NFTs\n• EscrowCreate/Finish → Conditional payments",
-            jp: "",
+            jp: "• Payment → XAHまたはトークンの送金\n• TrustSet → トラストライン\n• OfferCreate/Cancel → DEX\n• AccountSet → アカウント設定\n• SetHook → スマートコントラクト\n• URITokenMint/Buy → NFT\n• EscrowCreate/Finish → 条件付き支払い",
           },
           visual: "📦",
         },
         {
-          title: { es: "Fee, Sequence y Flags", en: "Fee, Sequence and Flags", jp: "" },
+          title: { es: "Fee, Sequence y Flags", en: "Fee, Sequence and Flags", jp: "Fee、Sequence、Flags" },
           content: {
             es: "Fee: 12 drops base (~gratis), se quema\n\nSequence: contador incremental\n• Garantiza orden de ejecución\n• Sin huecos: txs quedan en cola\n\nFlags: modifican comportamiento\n• Se combinan sumando valores\n• Cada tipo tiene sus flags propios",
             en: "Fee: 12 drops base (~free), burned\n\nSequence: incremental counter\n• Ensures execution order\n• No gaps: txs are queued\n\nFlags: modify behavior\n• Combined by adding values\n• Each type has its own flags",
-            jp: "",
+            jp: "Fee：12 drops基本（ほぼ無料）、バーン\n\nSequence：インクリメンタルカウンター\n• 実行順序を保証\n• 欠番はキューに入る\n\nFlags：動作を変更\n• 値を加算して組み合わせ\n• 各タイプ固有のフラグ",
           },
           visual: "🔢",
         },
@@ -778,7 +1091,7 @@ console.log("All share: TransactionType, Account, Fee, Sequence.");`,
       title: {
         es: "Firma digital y serialización",
         en: "Digital signature and serialization",
-        jp: "",
+        jp: "デジタル署名とシリアライゼーション",
       },
       theory: {
         es: `La firma digital es el mecanismo que garantiza que **solo tú puedes autorizar transacciones** desde tu cuenta. Entender cómo funciona te ayudará a comprender la seguridad de Xahau y a depurar problemas de firma.
@@ -931,14 +1244,88 @@ Xahau supports **multi-signing**: a transaction that requires signatures from **
 - Each signer signs the transaction separately
 - The signatures are combined and submitted together
 - Useful for shared accounts, DAOs, or additional security`,
-        jp: "",
+        jp: `デジタル署名は、アカウントから**あなただけがトランザクションを認可できる**ことを保証するメカニズムです。その仕組みを理解することで、Xahauのセキュリティを把握し、署名の問題をデバッグするのに役立ちます。
+
+### デジタル署名とは？
+
+デジタル署名は以下を証明する数学的証明です：
+1. **あなたがトランザクションを作成した**（認証）
+2. **署名後に誰も変更していない**（完全性）
+3. **署名したことを否定できない**（否認不可）
+
+### Xahauの署名アルゴリズム
+
+Xahauは2つの暗号アルゴリズムをサポートしています：
+
+| アルゴリズム | シードプレフィックス | 特徴 |
+|---|---|---|
+| **ed25519** | sEd... | 高速、最新、推奨 |
+| **secp256k1** | s...（Edなし） | ビットコイン/イーサリアム互換、古い |
+
+\`Wallet.generate()\`でウォレットを生成すると、デフォルトで**ed25519**が使用されます。\`sEd\`で始まるシードはed25519を使用します。
+
+### 署名プロセスのステップバイステップ
+
+1. **シリアライゼーション**：トランザクション（JSONオブジェクト）がXahauプロトコルに従って**バイナリ形式**に変換されます。各フィールドにはタイプコードと特定の順序があります。
+
+2. **ハッシュ**：シリアライズされたバイナリがハッシュ関数（SHA-512 half）にかけられ、**32バイトのダイジェスト**が得られます。
+
+3. **署名**：秘密鍵がそのハッシュに対して暗号署名を生成します。この署名は公開鍵でのみ検証できます。
+
+4. **アセンブリ**：署名（\`TxnSignature\`）と公開鍵（\`SigningPubKey\`）がシリアライズされたトランザクションに追加され、最終的な**tx_blob**が生成されます。
+
+### tx_blob：送信可能なトランザクション
+
+\`tx_blob\`はバイナリ形式で**トランザクション全体**（フィールド+署名）を含む16進数文字列です。これが実際にネットワークに送信されるものです：
+
+\`\`\`
+wallet.sign(prepared)
+// 返す：{ tx_blob: "1200002280000000...", hash: "A1B2C3..." }
+\`\`\`
+
+- **tx_blob**：シリアライズされた署名済みトランザクション（16進数）
+- **hash**：トランザクションの一意識別子（後で検索するため）
+
+### 署名の検証
+
+ノードがtx_blobを受信すると：
+
+1. blobをデシリアライズしてフィールドを抽出します
+2. \`SigningPubKey\`と\`TxnSignature\`を取り出します
+3. 署名がデータと公開鍵に対応することを検証します
+4. 公開鍵が\`Account\`アドレスに対応することを検証します
+5. すべてが一致すれば、トランザクションは有効です
+
+tx_blobの**1ビットでも**変更されると、署名が無効になりトランザクションは拒否されます。
+
+### オフライン署名
+
+**インターネット接続なし**でトランザクションに署名できます：
+
+1. 接続デバイスで：\`autofill()\`でトランザクションを準備します
+2. 準備済みトランザクションをオフラインデバイスにコピーします
+3. オフラインデバイスで：\`wallet.sign()\`で署名します
+4. \`tx_blob\`を接続デバイスにコピーします
+5. \`client.submit(tx_blob)\`で送信します
+
+これは**コールドウォレット**に役立ちます—秘密鍵がインターネット接続デバイスに触れることはありません。
+
+### マルチ署名（MultiSign）
+
+Xahauは**マルチ署名**をサポートしています：有効になるために**複数のアカウントの署名**を必要とするトランザクション。\`SignerListSet\`で設定します：
+
+- 重みを持つ署名者リスト（SignerList）を定義します
+- 最小クォーラムを設定します
+- 各署名者がトランザクションに個別に署名します
+- 署名を組み合わせて一緒に送信します
+- 共有アカウント、DAO、または追加セキュリティに役立ちます`,
       },
       codeBlocks: [
         {
           title: {
             es: "Firma y verificación del tx_blob",
             en: "Signing and verifying the tx_blob",
-            jp: "",
+            jp: "tx_blobの署名と検証",
           },
           language: "javascript",
           code: {
@@ -1074,14 +1461,79 @@ async function firmaDetallada() {
 }
 
 firmaDetallada().catch(console.error);`,
-            jp: "",
+            jp: `require("dotenv").config();
+const { Client, Wallet } = require("xahau");
+
+async function detailedSigning() {
+  const client = new Client("wss://xahau-test.net");
+  await client.connect();
+
+  const wallet = Wallet.fromSeed(process.env.WALLET_SEED, {algorithm: 'secp256k1'});
+
+  console.log("=== ウォレット情報 ===");
+  console.log("アドレス：", wallet.address);
+  console.log("公開鍵：", wallet.publicKey);
+  console.log("アルゴリズム：", wallet.publicKey.startsWith("ED") ? "ed25519" : "secp256k1");
+
+  // 構築と準備
+  const tx = {
+    TransactionType: "Payment",
+    Account: wallet.address,
+    Destination: "rf1NrYAsv92UPDd8nyCG4A3bez7dhYE61r",
+    Amount: "1000000",
+  };
+
+  const prepared = await client.autofill(tx);
+
+  // 署名
+  const signed = wallet.sign(prepared);
+
+  console.log("=== 署名結果 ===");
+  console.log("ハッシュ（トランザクションID）：", signed.hash);
+  console.log("完全なtx_blob：", signed.tx_blob);
+  console.log("長さ：", signed.tx_blob.length, "16進数文字");
+  console.log("サイズ：", signed.tx_blob.length / 2, "バイト");
+
+  // トランザクションが有効であることを確認
+  // （ノードはsubmitを受信すると内部でこれを行う）
+  console.log("=== 検証 ===");
+
+  // blobをデコードして確認
+  const decoded = client.request({
+    command: "tx",
+    transaction: signed.hash,
+  }).catch(() => {
+    // txはまだレジャーに存在しない、これは正常
+    console.log("txはまだ送信されていません（署名のみ）。");
+  });
+
+  // 送信
+  console.log("ノードにtx_blobを送信中...");
+  const result = await client.submitAndWait(signed.tx_blob);
+  console.log("結果：", result.result.meta.TransactionResult);
+
+  // ハッシュで検索できるようになった
+  const txInfo = await client.request({
+    command: "tx",
+    transaction: signed.hash,
+  });
+
+  console.log("=== レジャー内のトランザクション ===");
+  console.log("タイプ：", txInfo.result.TransactionType);
+  console.log("SigningPubKey：", txInfo.result.SigningPubKey);
+  console.log("レジャー：", txInfo.result.ledger_index);
+
+  await client.disconnect();
+}
+
+detailedSigning().catch(console.error);`,
           },
         },
         {
           title: {
             es: "Firma offline: preparar en un lado, firmar en otro",
             en: "Offline signing: prepare on one side, sign on another",
-            jp: "",
+            jp: "オフライン署名：一方で準備し、他方で署名",
           },
           language: "javascript",
           code: {
@@ -1221,35 +1673,102 @@ async function demo() {
 }
 
 demo().catch(console.error);`,
-            jp: "",
+            jp: `require("dotenv").config();
+const { Client, Wallet } = require("xahau");
+
+// =============================================
+// ステップ1：接続デバイスで
+// トランザクションを準備（接続が必要）
+// =============================================
+async function prepareOnline() {
+  const client = new Client("wss://xahau-test.net");
+  await client.connect();
+
+  const tx = {
+    TransactionType: "Payment",
+    Account: "rYourAddressHere",
+    Destination: "rf1NrYAsv92UPDd8nyCG4A3bez7dhYE61r",
+    Amount: "10000000", // 10 XAH
+  };
+
+  const prepared = await client.autofill(tx);
+  await client.disconnect();
+
+  // オフラインデバイスに転送するためJSONとして保存
+  const txToSign = JSON.stringify(prepared, null, 2);
+  console.log("=== このJSONをオフラインデバイスにコピー ===");
+  console.log(txToSign);
+
+  return prepared;
+}
+
+// =============================================
+// ステップ2：オフラインデバイスで（インターネットなし）
+// トランザクションに署名
+// =============================================
+function signOffline(preparedJSON) {
+  // 秘密鍵はオフラインデバイスにのみ存在する
+  const wallet = Wallet.fromSeed(process.env.WALLET_SEED, {algorithm: 'secp256k1'});
+
+  const signed = wallet.sign(preparedJSON);
+
+  console.log("=== このtx_blobを接続デバイスにコピー ===");
+  console.log("tx_blob：", signed.tx_blob);
+  console.log("hash：", signed.hash);
+
+  return signed;
+}
+
+// =============================================
+// ステップ3：接続デバイスで
+// 署名済みトランザクションを送信
+// =============================================
+async function sendOnline(txBlob) {
+  const client = new Client("wss://xahau-test.net");
+  await client.connect();
+
+  const result = await client.submitAndWait(txBlob);
+  console.log("結果：", result.result.meta.TransactionResult);
+
+  await client.disconnect();
+}
+
+// 完全フローのデモ（シンプルさのため1スクリプトで）
+async function demo() {
+  const prepared = await prepareOnline();
+  const signed = signOffline(prepared);
+  await sendOnline(signed.tx_blob);
+}
+
+demo().catch(console.error);`,
           },
         },
       ],
       slides: [
         {
-          title: { es: "¿Qué es una firma digital?", en: "What is a digital signature?", jp: "" },
+          title: { es: "¿Qué es una firma digital?", en: "What is a digital signature?", jp: "デジタル署名とは？" },
           content: {
             es: "Prueba matemática de que:\n\n• Tú creaste la transacción (autenticación)\n• Nadie la modificó (integridad)\n• No puedes negar haberla firmado (no repudio)\n\nAlgoritmos: ed25519 (sEd...) o secp256k1 (s...)",
             en: "Mathematical proof that:\n\n• You created the transaction (authentication)\n• No one modified it (integrity)\n• You cannot deny having signed it (non-repudiation)\n\nAlgorithms: ed25519 (sEd...) or secp256k1 (s...)",
-            jp: "",
+            jp: "以下を証明する数学的証明：\n\n• あなたがトランザクションを作成（認証）\n• 誰も変更していない（完全性）\n• 署名したことを否定できない（否認不可）\n\nアルゴリズム：ed25519（sEd...）またはsecp256k1（s...）",
           },
           visual: "🔏",
         },
         {
-          title: { es: "El proceso de firma", en: "The signing process", jp: "" },
+          title: { es: "El proceso de firma", en: "The signing process", jp: "署名プロセス" },
           content: {
             es: "1. Serializar → JSON a binario\n2. Hash → SHA-512 half (32 bytes)\n3. Firmar → Clave privada genera firma\n4. Ensamblar → tx_blob (hex)\n\nwallet.sign(prepared)\n→ { tx_blob: \"1200...\", hash: \"A1B2...\" }",
             en: "1. Serialize → JSON to binary\n2. Hash → SHA-512 half (32 bytes)\n3. Sign → Private key generates signature\n4. Assemble → tx_blob (hex)\n\nwallet.sign(prepared)\n→ { tx_blob: \"1200...\", hash: \"A1B2...\" }",
-            jp: "",
+            jp: "1. シリアライズ → JSONをバイナリに\n2. ハッシュ → SHA-512 half（32バイト）\n3. 署名 → 秘密鍵が署名を生成\n4. アセンブリ → tx_blob（16進数）\n\nwallet.sign(prepared)\n→ { tx_blob: \"1200...\", hash: \"A1B2...\" }",
           },
           visual: "🔐",
         },
         {
-          title: { es: "Firma offline y multi-firma", en: "Offline signing and multi-signing", jp: "" },
+          title: { es: "Firma offline y multi-firma", en: "Offline signing and multi-signing", jp: "オフライン署名とマルチ署名" },
           content: {
             es: "Firma offline (cold wallet):\n• Preparar online → Firmar offline → Enviar online\n• Claves nunca tocan internet\n\nMulti-firma (MultiSign):\n• Múltiples firmantes con pesos\n• Quórum mínimo configurable\n• Ideal para cuentas compartidas",
             en: "Offline signing (cold wallet):\n• Prepare online → Sign offline → Submit online\n• Keys never touch the internet\n\nMulti-signing (MultiSign):\n• Multiple signers with weights\n• Configurable minimum quorum\n• Ideal for shared accounts",
-            jp: "",
+            jp: "オフライン署名（コールドウォレット）：\n• オンライン準備 → オフライン署名 → オンライン送信\n• 秘密鍵がインターネットに触れない\n\nマルチ署名（MultiSign）：\n• 重み付き複数署名者\n• 設定可能な最小クォーラム\n• 共有アカウントに最適",
           },
           visual: "🧊",
         },
@@ -1260,7 +1779,7 @@ demo().catch(console.error);`,
       title: {
         es: "Envío, validación y resultados",
         en: "Submission, validation and results",
-        jp: "",
+        jp: "送信、検証、結果",
       },
       theory: {
         es: `Una vez firmada la transacción, hay que enviarla a la red y entender los posibles resultados. Xahau tiene un sistema de **códigos de resultado** muy detallado que te indica exactamente qué pasó.
@@ -1433,14 +1952,98 @@ result.result.meta.AffectedNodes      → What changed in the ledger
 result.result.ledger_index             → Which ledger it was included in
 result.result.hash                     → Unique transaction hash
 \`\`\``,
-        jp: "",
+        jp: `トランザクションに署名したら、ネットワークに送信して可能な結果を理解する必要があります。Xahauには、何が起きたかを正確に教える非常に詳細な**結果コード**システムがあります。
+
+### submit対submitAndWait
+
+\`xahau\`ライブラリはトランザクション送信に2つのメソッドを提供します：
+
+**client.submit(tx_blob)**：
+- トランザクションを送信して**即座に**返します
+- 暫定結果はノードがトランザクションを受け入れたかどうかを示します（検証されたかどうかではない）
+- 最終結果を見るには後で\`tx\`でクエリする必要があります
+- 多くのトランザクションを素早く送信したい時に便利
+
+**client.submitAndWait(tx_blob)**：
+- トランザクションを送信して、検証済みレジャーに含まれるまで**待機**します
+- 最終結果を直接返します
+- ほとんどの場合に便利
+- 3〜10秒かかる可能性があります（1〜2レジャー）
+
+### 結果コードのカテゴリ
+
+トランザクション結果は**プレフィックス**に基づいてカテゴリに分けられます：
+
+### tes：成功
+
+\`tesSUCCESS\`は唯一の成功コードです。トランザクションが正常に処理され、変更がレジャーに適用されたことを意味します。
+
+### tec：含まれたが失敗
+
+\`tec\`コードは、トランザクションが**レジャーに含まれた**（Feeが徴収された）が、操作が**実行されなかった**ことを意味します：
+
+| コード | 意味 |
+|---|---|
+| **tecUNFUNDED_PAYMENT** | 支払いのための残高が不足 |
+| **tecNO_LINE** | トークンのトラストラインが存在しない |
+| **tecNO_DST** | 宛先アカウントが存在しない |
+| **tecDST_TAG_NEEDED** | 宛先アカウントがDestinationTagを必要とする |
+| **tecNO_PERMISSION** | この操作の権限がない |
+| **tecINSUFFICIENT_RESERVE** | 新しいオブジェクトのリザーブに十分なXAHがない |
+| **tecPATH_DRY** | 実行可能な支払いルートが見つからない |
+| **tecKILLED** | tfFillOrKillフラグによりオファーがキャンセル |
+
+**重要**：\`tec\`エラーでは、操作が失敗しても**Feeは徴収されます**。
+
+### tef：処理前のエラー
+
+\`tef\`コードはトランザクションが**処理される前に拒否された**ことを示します。Feeは**徴収されません**：
+
+| コード | 意味 |
+|---|---|
+| **tefPAST_SEQ** | Sequenceがすでに使用済み（重複トランザクション） |
+| **tefMAX_LEDGER** | LastLedgerSequenceがすでに過去（トランザクション期限切れ） |
+| **tefALREADY** | トランザクションはすでにキューにある |
+
+### tem：フォームエラー
+
+\`tem\`コードはトランザクションが**不正な形式**で、有効になり得ないことを示します：
+
+| コード | 意味 |
+|---|---|
+| **temMALFORMED** | 無効なフィールドまたは不正な形式 |
+| **temBAD_AMOUNT** | 無効な金額（負数、XAHでゼロなど） |
+| **temBAD_FEE** | 無効なFee |
+| **temDISABLED** | このネットワークで機能が無効 |
+| **temINVALID_FLAG** | このトランザクションタイプに対して無効なフラグ |
+
+### ter：一時的エラー（リトライ）
+
+\`ter\`コードはリトライすれば解決するかもしれない**一時的な**エラーを示します：
+
+| コード | 意味 |
+|---|---|
+| **terPRE_SEQ** | 前のトランザクションが保留中（前のSequence） |
+| **terQUEUED** | トランザクションはキューで待機中（飛行中が多すぎる） |
+| **terINSUF_FEE_B** | 現在の負荷に対してFeeが不足 |
+
+### 完全な結果の読み取り
+
+結果オブジェクトには必要なすべての情報が含まれています：
+
+\`\`\`
+result.result.meta.TransactionResult  → コード（tesSUCCESSなど）
+result.result.meta.AffectedNodes      → レジャーで何が変わったか
+result.result.ledger_index             → どのレジャーに含まれたか
+result.result.hash                     → トランザクションの一意ハッシュ
+\`\`\``,
       },
       codeBlocks: [
         {
           title: {
             es: "Manejar todos los tipos de resultado",
             en: "Handle all result types",
-            jp: "",
+            jp: "すべての結果タイプの処理",
           },
           language: "javascript",
           code: {
@@ -1596,36 +2199,111 @@ async function sendChecking() {
 }
 
 sendChecking().catch(console.error);`,
-            jp: "",
+            jp: `require("dotenv").config();
+const { Client, Wallet } = require("xahau");
+
+async function sendWithHandling() {
+  const client = new Client("wss://xahau-test.net");
+  await client.connect();
+
+  const wallet = Wallet.fromSeed(process.env.WALLET_SEED, {algorithm: 'secp256k1'});
+
+  const tx = {
+    TransactionType: "Payment",
+    Account: wallet.address,
+    Destination: "rf1NrYAsv92UPDd8nyCG4A3bez7dhYE61r",
+    Amount: "1000000",
+  };
+
+  try {
+    const prepared = await client.autofill(tx);
+    const signed = wallet.sign(prepared);
+    const result = await client.submitAndWait(signed.tx_blob);
+
+    const code = result.result.meta.TransactionResult;
+
+    // カテゴリ別に結果を分析
+    if (code === "tesSUCCESS") {
+      console.log("成功：トランザクションが正常に処理されました。");
+      console.log("レジャー：", result.result.ledger_index);
+      console.log("ハッシュ：", signed.hash);
+
+    } else if (code.startsWith("tec")) {
+      // txはレジャーに含まれたが操作は失敗
+      // Feeは徴収された
+      console.log("失敗（tec）：", code);
+      console.log("操作は実行されませんでしたが、Feeは徴収されました。");
+
+      // 個別の診断
+      switch (code) {
+        case "tecUNFUNDED_PAYMENT":
+          console.log("→ 残高が不足しています。");
+          break;
+        case "tecNO_DST":
+          console.log("→ 宛先アカウントが存在しません。");
+          break;
+        case "tecDST_TAG_NEEDED":
+          console.log("→ DestinationTagがありません。");
+          break;
+        case "tecINSUFFICIENT_RESERVE":
+          console.log("→ リザーブに十分なXAHがありません。");
+          break;
+        default:
+          console.log("→ ドキュメントを確認してください：", code);
+      }
+
+    } else if (code.startsWith("tef")) {
+      console.log("拒否（tef）：", code);
+      console.log("トランザクションは処理前に拒否されました。");
+      console.log("Feeは徴収されませんでした。");
+
+    } else if (code.startsWith("tem")) {
+      console.log("不正形式（tem）：", code);
+      console.log("トランザクションにフォームエラーがあります。");
+      console.log("フィールドと値を確認してください。");
+
+    } else if (code.startsWith("ter")) {
+      console.log("一時的エラー（ter）：", code);
+      console.log("数秒後に再試行できます。");
+    }
+
+  } catch (error) {
+    console.error("接続または送信エラー：", error.message);
+  }
+
+  await client.disconnect();
+}
+
+sendWithHandling().catch(console.error);`,
           },
         },
-        
+
       ],
       slides: [
         {
-          title: { es: "submit vs submitAndWait", en: "submit vs submitAndWait", jp: "" },
+          title: { es: "submit vs submitAndWait", en: "submit vs submitAndWait", jp: "submit対submitAndWait" },
           content: {
             es: "submit():\n• Envía y devuelve inmediatamente\n• Resultado preliminar (no final)\n• Rápido, para enviar muchas txs\n\nsubmitAndWait():\n• Envía y espera validación (3-10s)\n• Resultado final directo\n• Recomendado para la mayoría de casos",
             en: "submit():\n• Sends and returns immediately\n• Preliminary result (not final)\n• Fast, for sending many txs\n\nsubmitAndWait():\n• Sends and waits for validation (3-10s)\n• Direct final result\n• Recommended for most cases",
-            jp: "",
+            jp: "submit()：\n• 送信して即座に返す\n• 暫定結果（最終でない）\n• 高速、多くのtxを送信する場合\n\nsubmitAndWait()：\n• 送信して検証を待つ（3〜10秒）\n• 直接最終結果\n• ほとんどの場合に推奨",
           },
           visual: "📤",
         },
         {
-          title: { es: "Códigos de resultado", en: "Result codes", jp: "" },
+          title: { es: "Códigos de resultado", en: "Result codes", jp: "結果コード" },
           content: {
             es: "• tesSUCCESS → Éxito\n• tec... → Incluida pero falló (fee cobrado)\n• tef... → Rechazada (fee NO cobrado)\n• tem... → Mal formada (error de formato)\n• ter... → Error temporal (reintentar)\n\nSiempre verifica meta.TransactionResult",
             en: "• tesSUCCESS → Success\n• tec... → Included but failed (fee charged)\n• tef... → Rejected (fee NOT charged)\n• tem... → Malformed (format error)\n• ter... → Temporary error (retry)\n\nAlways check meta.TransactionResult",
-            jp: "",
+            jp: "• tesSUCCESS → 成功\n• tec... → 含まれたが失敗（Fee徴収）\n• tef... → 拒否（Fee未徴収）\n• tem... → 不正形式（フォームエラー）\n• ter... → 一時的エラー（リトライ）\n\n常にmeta.TransactionResultを確認",
           },
           visual: "🏷️",
         },
         {
-          title: { es: "Errores tec más comunes", en: "Most common tec errors", jp: "" },
+          title: { es: "Errores tec más comunes", en: "Most common tec errors", jp: "最も一般的なtecエラー" },
           content: {
             es: "• tecUNFUNDED_PAYMENT → Sin balance\n• tecNO_DST → Destino no existe\n• tecDST_TAG_NEEDED → Falta tag\n• tecNO_LINE → Sin trust line\n• tecINSUFFICIENT_RESERVE → Sin reserva\n• tecPATH_DRY → Sin ruta de pago\n\nEl fee SE cobra en errores tec",
             en: "• tecUNFUNDED_PAYMENT → No balance\n• tecNO_DST → Destination doesn't exist\n• tecDST_TAG_NEEDED → Missing tag\n• tecNO_LINE → No trust line\n• tecINSUFFICIENT_RESERVE → No reserve\n• tecPATH_DRY → No payment path\n\nThe fee IS charged on tec errors",
-            jp: "",
+            jp: "• tecUNFUNDED_PAYMENT → 残高なし\n• tecNO_DST → 宛先が存在しない\n• tecDST_TAG_NEEDED → タグなし\n• tecNO_LINE → トラストラインなし\n• tecINSUFFICIENT_RESERVE → リザーブなし\n• tecPATH_DRY → 支払いルートなし\n\ntecエラーではFeeが徴収される",
           },
           visual: "⚠️",
         },
@@ -1636,7 +2314,7 @@ sendChecking().catch(console.error);`,
       title: {
         es: "Transacciones a nivel del ledger",
         en: "Transactions at the ledger level",
-        jp: "",
+        jp: "レジャーレベルのトランザクション",
       },
       theory: {
         es: `Para entender realmente cómo funcionan las transacciones, necesitas ver lo que ocurre **dentro del ledger** cuando una transacción se procesa. Esto te ayudará a depurar problemas complejos y a entender la metadata.
@@ -1857,14 +2535,122 @@ When a ledger closes, a **hash** is calculated that summarizes:
 - The complete ledger state (state tree)
 
 If a validator computes a different hash from 80% of the UNL, its ledger is discarded — this guarantees network consistency.`,
-        jp: "",
+        jp: `トランザクションがどのように機能するかを本当に理解するには、トランザクションが処理されるときに**レジャー内部で何が起こるか**を見る必要があります。これにより、複雑な問題をデバッグしてメタデータを理解するのに役立ちます。
+
+### トランザクションはどのようにレジャーを変更するか？
+
+トランザクションが正常に処理されると、**レジャーの状態**（レジャーデータベースに保存されているオブジェクト）が変更されます。これらの変更はトランザクションの**メタデータ**に記録されます。
+
+### AffectedNodes：トランザクションの足跡
+
+\`meta.AffectedNodes\`フィールドは、レジャーで**正確に何が変わったか**を説明する配列です。影響を受けた各ノードは3つのタイプのいずれかになります：
+
+### CreatedNode：新しいオブジェクト
+
+レジャーに新しいオブジェクトが作成されました：
+
+\`\`\`
+{
+  "CreatedNode": {
+    "LedgerEntryType": "RippleState",  // オブジェクトタイプ
+    "LedgerIndex": "ABC123...",         // オブジェクトの一意ID
+    "NewFields": {                      // 新しいオブジェクトのフィールド
+      "Balance": { "value": "100" },
+      "LowLimit": { ... },
+      "HighLimit": { ... }
+    }
+  }
+}
+\`\`\`
+
+例：新しいトラストライン、新しいDEXオファー、新しいURIToken。
+
+### ModifiedNode：変更されたオブジェクト
+
+既存のオブジェクトが変更されました：
+
+\`\`\`
+{
+  "ModifiedNode": {
+    "LedgerEntryType": "AccountRoot",
+    "LedgerIndex": "DEF456...",
+    "PreviousFields": {                // 変更前の状態
+      "Balance": "100000000"
+    },
+    "FinalFields": {                   // 変更後の状態
+      "Balance": "95000000",
+      "Sequence": 43
+    }
+  }
+}
+\`\`\`
+
+\`PreviousFields\`は**変更された**フィールドのみを表示します（オブジェクトの全フィールドではない）。\`FinalFields\`は変更後の完全な状態を表示します。
+
+### DeletedNode：削除されたオブジェクト
+
+レジャーからオブジェクトが削除されました：
+
+\`\`\`
+{
+  "DeletedNode": {
+    "LedgerEntryType": "Offer",
+    "LedgerIndex": "GHI789...",
+    "FinalFields": {                   // 削除時の状態
+      "TakerPays": "0",
+      "TakerGets": "0"
+    }
+  }
+}
+\`\`\`
+
+例：完了/キャンセルされたオファー、削除されたトラストライン（残高ゼロ）、バーンされたURIToken。
+
+### 残高の変化：お金の流れを追う
+
+支払いトランザクションでは、\`AccountRoot\`タイプの\`ModifiedNode\`エントリを観察して、お金がどのように移動したかを正確に追跡できます：
+
+- 送信元アカウント：\`Balance\`が減少（XAHを送信）
+- 宛先アカウント：\`Balance\`が増加（XAHを受信）
+- 残高の差は\`Amount\` + \`Fee\`です
+
+トークン（IOU）の場合、変更は\`RippleState\`タイプの\`ModifiedNode\`エントリで確認できます。
+
+### リザーブ：リザーブシステム
+
+Xahauレジャーは利用可能な残高に影響する**リザーブ**システムを使用します：
+
+- **基本リザーブ**：1 XAH—アカウントが存在するための最小値
+- **所有者リザーブ**：アカウントが所有する各オブジェクトにつき0.2 XAH
+
+レジャー内の各オブジェクト（トラストライン、オファー、URIToken、Hook）がリザーブを増加させます。オブジェクトを削除するまで、リザーブされたXAHは使用できません。
+
+### レジャー内の処理順序
+
+レジャー内で、トランザクションは**決定論的な順序**で処理されます：
+
+1. トランザクションは**正規ハッシュ**で並べられます（Sequenceや送信時間ではない）
+2. その順序で順次処理されます
+3. 各トランザクションは前のトランザクション後のレジャー状態を見ます
+4. 2つのトランザクションが同じリソースを競う場合、最初のもの（ハッシュ順）が勝ちます
+
+これにより、**すべてのバリデーターが受け取ったトランザクションの順序に関係なく、まったく同じ結果を計算する**ことが保証されます。
+
+### レジャーハッシュ
+
+レジャーが閉じると、以下を要約した**ハッシュ**が計算されます：
+- 前のレジャーのハッシュ（レジャーの連鎖）
+- 含まれるすべてのトランザクションとそのメタデータ
+- レジャーの完全な状態（状態ツリー）
+
+バリデーターがUNLの80%と異なるハッシュを計算した場合、そのレジャーは破棄されます—これがネットワークの一貫性を保証します。`,
       },
       codeBlocks: [
         {
           title: {
             es: "Analizar los AffectedNodes de una transacción",
             en: "Analyze a transaction's AffectedNodes",
-            jp: "",
+            jp: "トランザクションのAffectedNodesを分析",
           },
           language: "javascript",
           code: {
@@ -2046,14 +2832,102 @@ async function analizarMetadata() {
 }
 
 analizarMetadata().catch(console.error);`,
-            jp: "",
+            jp: `require("dotenv").config();
+const { Client, Wallet } = require("xahau");
+
+async function analyzeMetadata() {
+  const client = new Client("wss://xahau-test.net");
+  await client.connect();
+
+  const wallet = Wallet.fromSeed(process.env.WALLET_SEED, {algorithm: 'secp256k1'});
+
+  // メタデータを分析するために支払いを送信
+  const tx = {
+    TransactionType: "Payment",
+    Account: wallet.address,
+    Destination: "rf1NrYAsv92UPDd8nyCG4A3bez7dhYE61r",
+    Amount: "5000000", // 5 XAH
+  };
+
+  const prepared = await client.autofill(tx);
+  const signed = wallet.sign(prepared);
+  const result = await client.submitAndWait(signed.tx_blob);
+
+  const meta = result.result.meta;
+  console.log("=== メタデータ分析 ===");
+  console.log("結果：", meta.TransactionResult);
+  console.log("影響ノード数：", meta.AffectedNodes.length);
+
+  // 影響ノードを分類
+  const created = [];
+  const modified = [];
+  const deleted = [];
+
+  for (const node of meta.AffectedNodes) {
+    if (node.CreatedNode) {
+      created.push(node.CreatedNode);
+    } else if (node.ModifiedNode) {
+      modified.push(node.ModifiedNode);
+    } else if (node.DeletedNode) {
+      deleted.push(node.DeletedNode);
+    }
+  }
+
+  // 作成されたオブジェクトを表示
+  if (created.length > 0) {
+    console.log("--- 作成されたオブジェクト ---");
+    for (const n of created) {
+      console.log("  +", n.LedgerEntryType);
+      console.log("   インデックス：", n.LedgerIndex);
+    }
+  }
+
+  // 変更されたオブジェクトを表示
+  if (modified.length > 0) {
+    console.log("--- 変更されたオブジェクト ---");
+    for (const n of modified) {
+      console.log("  ~", n.LedgerEntryType);
+      if (n.PreviousFields && n.FinalFields) {
+        // 残高の変化を表示（AccountRoot）
+        if (n.PreviousFields.Balance && n.FinalFields.Balance) {
+          const before = Number(n.PreviousFields.Balance) / 1000000;
+          const after = Number(n.FinalFields.Balance) / 1000000;
+          const diff = after - before;
+          console.log("   残高：", before, "→", after, "XAH");
+          console.log("   変化：", diff > 0 ? "+" : "", diff.toFixed(6), "XAH");
+        }
+        // Sequenceの変化を表示
+        if (n.FinalFields.Sequence) {
+          console.log("   Sequence：", n.FinalFields.Sequence);
+        }
+      }
+    }
+  }
+
+  // 削除されたオブジェクトを表示
+  if (deleted.length > 0) {
+    console.log("--- 削除されたオブジェクト ---");
+    for (const n of deleted) {
+      console.log("  -", n.LedgerEntryType);
+    }
+  }
+
+  // 残高の要約
+  console.log("--- まとめ ---");
+  console.log("支払ったFee：", Number(result.result.Fee) / 1000000, "XAH");
+  console.log("Feeはバーンされました（どのアカウントにも渡らない）。");
+
+  await client.disconnect();
+}
+
+analyzeMetadata().catch(console.error);`,
           },
         },
         {
           title: {
             es: "Consultar la reserva actual de tu cuenta",
             en: "Query your account's current reserve",
-            jp: "",
+            jp: "アカウントの現在のリザーブを照会",
           },
           language: "javascript",
           code: {
@@ -2179,35 +3053,95 @@ async function consultarReserva(address) {
 }
 //You can use your account or rf1NrYAsv92UPDd8nyCG4A3bez7dhYE61r
 consultarReserva("rYourAccountHere");`,
-            jp: "",
+            jp: `require("dotenv").config();
+const { Client } = require("xahau");
+
+async function checkReserve(address) {
+  const client = new Client("wss://xahau-test.net");
+  await client.connect();
+
+  // 現在のリザーブのサーバー情報を取得
+  const serverInfo = await client.request({ command: "server_info" });
+  const ledgerInfo = serverInfo.result.info.validated_ledger;
+  const baseReserve = ledgerInfo.reserve_base_xrp; // XAH単位
+  const ownerReserve = ledgerInfo.reserve_inc_xrp; // XAH単位
+
+  console.log("=== ネットワークリザーブ ===");
+  console.log("基本リザーブ（アカウントごと）：", baseReserve, "XAH");
+  console.log("所有者リザーブ（オブジェクトごと）：", ownerReserve, "XAH");
+
+  // アカウント情報を取得
+  const accountInfo = await client.request({
+    command: "account_info",
+    account: address,
+    ledger_index: "validated",
+  });
+
+  const account = accountInfo.result.account_data;
+  const balance = Number(account.Balance) / 1000000;
+  const ownerCount = account.OwnerCount;
+  const totalReserve = baseReserve + (ownerCount * ownerReserve);
+  const available = balance - totalReserve;
+
+  console.log("=== あなたのアカウント ===");
+  console.log("アドレス：", address);
+  console.log("総残高：", balance, "XAH");
+  console.log("レジャー内のオブジェクト数：", ownerCount);
+  console.log("総リザーブ：", totalReserve, "XAH");
+  console.log("  →", baseReserve, "XAH（基本）");
+  console.log("  +", ownerCount, "x", ownerReserve, "=", ownerCount * ownerReserve, "XAH（オブジェクト）");
+  console.log("使用可能残高：", available, "XAH");
+
+  // 所有するオブジェクトを表示
+  const objects = await client.request({
+    command: "account_objects",
+    account: address,
+    ledger_index: "validated",
+  });
+
+  const byType = {};
+  for (const obj of objects.result.account_objects) {
+    const tipo = obj.LedgerEntryType;
+    byType[tipo] = (byType[tipo] || 0) + 1;
+  }
+
+  console.log("=== タイプ別オブジェクト ===");
+  for (const [tipo, count] of Object.entries(byType)) {
+    console.log("  " + tipo + "：", count, "（リザーブ：", count * ownerReserve, "XAH）");
+  }
+
+  await client.disconnect();
+}
+//あなたのアカウントまたはrf1NrYAsv92UPDd8nyCG4A3bez7dhYE61rを使用できます
+checkReserve("rYourAccountHere");`,
           },
         },
       ],
       slides: [
         {
-          title: { es: "AffectedNodes", en: "AffectedNodes", jp: "" },
+          title: { es: "AffectedNodes", en: "AffectedNodes", jp: "AffectedNodes" },
           content: {
             es: "Cada transacción registra qué cambió:\n\n• CreatedNode → Nuevo objeto en el ledger\n• ModifiedNode → Objeto existente modificado\n  (PreviousFields → FinalFields)\n• DeletedNode → Objeto eliminado\n\nLa huella exacta de la transacción",
             en: "Each transaction records what changed:\n\n• CreatedNode → New object in the ledger\n• ModifiedNode → Existing object modified\n  (PreviousFields → FinalFields)\n• DeletedNode → Object deleted\n\nThe exact footprint of the transaction",
-            jp: "",
+            jp: "各トランザクションが変化を記録：\n\n• CreatedNode → レジャー内の新しいオブジェクト\n• ModifiedNode → 既存オブジェクトの変更\n  （PreviousFields → FinalFields）\n• DeletedNode → 削除されたオブジェクト\n\nトランザクションの正確な足跡",
           },
           visual: "🔍",
         },
         {
-          title: { es: "Sistema de reservas", en: "Reserve system", jp: "" },
+          title: { es: "Sistema de reservas", en: "Reserve system", jp: "リザーブシステム" },
           content: {
             es: "Reserva base: 1 XAH por cuenta\nReserva por objeto: 0.2 XAH cada uno\n\nObjetos que consumen reserva:\n• Trust lines, Ofertas DEX\n• URITokens, Hooks\n\nEliminar objeto = liberar reserva\nDisponible = Balance - Reserva total",
             en: "Base reserve: 1 XAH per account\nOwner reserve: 0.2 XAH each\n\nObjects that consume reserve:\n• Trust lines, DEX Offers\n• URITokens, Hooks\n\nDelete object = free reserve\nAvailable = Balance - Total reserve",
-            jp: "",
+            jp: "基本リザーブ：アカウントごと1 XAH\n所有者リザーブ：オブジェクトごと0.2 XAH\n\nリザーブを消費するオブジェクト：\n• トラストライン、DEXオファー\n• URIToken、Hook\n\nオブジェクト削除 = リザーブ解放\n使用可能 = 残高 - 総リザーブ",
           },
           visual: "💰",
         },
         {
-          title: { es: "Orden y consistencia", en: "Order and consistency", jp: "" },
+          title: { es: "Orden y consistencia", en: "Order and consistency", jp: "順序と一貫性" },
           content: {
             es: "Dentro de un ledger:\n\n• Txs ordenadas por hash canónico\n• Procesadas secuencialmente\n• Mismo resultado en todos los nodos\n\nHash del ledger resume:\n• Ledger anterior + Txs + Estado\n• 80% UNL debe coincidir\n• Garantiza consistencia total",
             en: "Within a ledger:\n\n• Txs ordered by canonical hash\n• Processed sequentially\n• Same result on all nodes\n\nLedger hash summarizes:\n• Previous ledger + Txs + State\n• 80% UNL must agree\n• Guarantees total consistency",
-            jp: "",
+            jp: "レジャー内：\n\n• 正規ハッシュで順序付け\n• 順次処理\n• すべてのノードで同じ結果\n\nレジャーハッシュが要約：\n• 前のレジャー + トランザクション + 状態\n• UNLの80%が一致必要\n• 完全な一貫性を保証",
           },
           visual: "🔗",
         },

@@ -4,7 +4,7 @@ export default {
   title: {
     es: "Otras transacciones disponibles",
     en: "Other Available Transactions",
-    jp: "",
+    jp: "その他の利用可能なトランザクション",
   },
   lessons: [
     {
@@ -12,7 +12,7 @@ export default {
       title: {
         es: "Escrows: pagos condicionales",
         en: "Escrows: Conditional Payments",
-        jp: "",
+        jp: "エスクロー：条件付き支払い",
       },
       theory: {
         es: `Un **Escrow** es un mecanismo de pago condicional que bloquea fondos hasta que se cumplan ciertas condiciones. Es como un sobre sellado con dinero que solo se puede abrir bajo circunstancias específicas. Una caja fuerte condicional.
@@ -109,14 +109,60 @@ Xahau supports crypto-conditions from the **Interledger (ILP)** protocol:
 - The creator generates a \`Condition\` (hash) and saves the \`Fulfillment\` (preimage)
 - To complete the escrow, the \`Fulfillment\` matching the \`Condition\` must be provided
 - This allows escrows only released when someone proves they know a secret`,
-        jp: "",
+        jp: `**エスクロー**は、特定の条件が満たされるまで資金をロックする条件付き支払いメカニズムです。特定の状況下でのみ開封できる封筒のようなもので、条件付き金庫と言えます。
+
+### ユースケース
+
+- **スケジュール支払い**：将来の特定の日に資金をリリース
+- **アトミックスワップ**：互いを信頼しない当事者間の条件付き交換
+- **条件付きリリース**：暗号証明が提供された場合にのみ資金をリリース
+- **ベスティング**：時間をかけたトークンの段階的な配布
+
+### EscrowCreate：エスクローの作成
+
+\`EscrowCreate\`トランザクションタイプは、条件付きでXAHの金額をロックします：
+
+| フィールド | 説明 |
+|---|---|
+| \`Amount\` | ロックするXAHまたはその他の資産の量（XAHの場合はdrops、トークンの場合はAmountオブジェクト） |
+| \`Destination\` | 資金を受け取るアカウント |
+| \`FinishAfter\` | エスクローを完了するための最小タイムスタンプ |
+| \`CancelAfter\` | キャンセル可能になるタイムスタンプ |
+| \`Condition\` | リリースのためのオプションの暗号条件 |
+
+**重要なルール**：
+- \`FinishAfter\`または\`Condition\`（または両方）のいずれかを指定する必要があります
+- \`CancelAfter\`を使用する場合は、\`FinishAfter\`より後でなければなりません
+- タイムスタンプは**Ripple Epoch**（2000年01月01日00:00:00 UTCからの秒数）を使用します
+
+### EscrowFinish：エスクローの完了
+
+任意のアカウントが\`EscrowFinish\`を実行して受取人に資金をリリースできます：
+- \`FinishAfter\`後にのみ機能します（指定されている場合）
+- \`Condition\`がある場合は、正しい\`Fulfillment\`を提供する必要があります
+- \`Owner\`と\`OfferSequence\`フィールドが完了するエスクローを特定します
+
+### EscrowCancel：エスクローのキャンセル
+
+\`EscrowCancel\`で資金が作成者に返還されます：
+- \`CancelAfter\`後にのみ機能します
+- 任意のアカウントがキャンセルを実行できます
+- 資金はエスクローを作成したアカウントに戻ります
+
+### 暗号条件
+
+Xahauは**Interledger (ILP)**プロトコルの暗号条件をサポートします：
+- **PREIMAGE-SHA-256**標準に基づいています
+- 作成者は\`Condition\`（ハッシュ）を生成し、\`Fulfillment\`（プリイメージ）を保存します
+- エスクローを完了するには、\`Condition\`に一致する\`Fulfillment\`を提供する必要があります
+- これにより、秘密を知っている人だけがリリースできるエスクローが可能になります`,
       },
       codeBlocks: [
         {
           title: {
             es: "Crear un escrow con bloqueo temporal (FinishAfter = 5 minutos)",
             en: "Create an escrow with time lock (FinishAfter = 2 minutes)",
-            jp: "",
+            jp: "タイムロック付きエスクローの作成（FinishAfter = 2分）",
           },
           language: "javascript",
           code: {
@@ -234,14 +280,70 @@ async function createTimeLockedEscrow() {
 }
 
 createTimeLockedEscrow();`,
-            jp: "",
+            jp: `require("dotenv").config();
+const { Client, Wallet, xahToDrops } = require("xahau");
+
+async function createTimeLockedEscrow() {
+  const client = new Client("wss://xahau-test.net");
+  await client.connect();
+
+  const sender = Wallet.fromSeed(process.env.WALLET_SEED, {algorithm: 'secp256k1'});
+
+  // Ripple Epoch: 2000年01月01日00:00:00 UTCからの秒数
+  // Unix Epochとの差: 946684800秒
+  const RIPPLE_EPOCH_OFFSET = 946684800;
+  const now = Math.floor(Date.now() / 1000);
+
+  // FinishAfter: 2分後
+  const finishAfter = now - RIPPLE_EPOCH_OFFSET + 2 * 60;
+  // CancelAfter: 24時間後（誰も完了しなければキャンセル可能）
+  const cancelAfter = now - RIPPLE_EPOCH_OFFSET + 24 * 60 * 60;
+
+  const escrowCreate = {
+    TransactionType: "EscrowCreate",
+    Account: sender.address,
+    Destination: "rDestinationAddress",
+    Amount: xahToDrops(10), // 10 XAHをロック
+    FinishAfter: finishAfter,
+    CancelAfter: cancelAfter,
+  };
+
+  const prepared = await client.autofill(escrowCreate);
+  const signed = sender.sign(prepared);
+  const result = await client.submitAndWait(signed.tx_blob);
+
+  const txResult = result.result.meta.TransactionResult;
+  console.log("=== EscrowCreate ===");
+  console.log("結果:", txResult);
+
+  if (txResult === "tesSUCCESS") {
+    console.log("Hash:", signed.hash);
+    console.log("Sequence:", prepared.Sequence);
+    console.log(
+      "FinishAfter:",
+      new Date((finishAfter + RIPPLE_EPOCH_OFFSET) * 1000).toISOString()
+    );
+    console.log(
+      "CancelAfter:",
+      new Date((cancelAfter + RIPPLE_EPOCH_OFFSET) * 1000).toISOString()
+    );
+    console.log("Sequenceを保存してください！EscrowFinishに必要です。");
+    console.log(\`エスクローのSequence: \${prepared.Sequence}\`);
+    console.log(\`あなたのアドレス: \${sender.address}\`);
+
+  }
+
+  await client.disconnect();
+}
+
+createTimeLockedEscrow();`,
           },
         },
         {
           title: {
             es: "Completar (finish) un escrow después del tiempo de bloqueo",
             en: "Complete (finish) an escrow after the lock period",
-            jp: "",
+            jp: "ロック期間後にエスクローを完了（finish）する",
           },
           language: "javascript",
           code: {
@@ -401,35 +503,112 @@ async function finishEscrow(ownerAddress, escrowSequence) {
 
 // Use the creator's address and the Sequence from EscrowCreate
 finishEscrow("rCreatorAddress", 12345);`,
-            jp: "",
+            jp: `require("dotenv").config();
+const { Client, Wallet } = require("xahau");
+
+async function finishEscrow(ownerAddress, escrowSequence) {
+  const client = new Client("wss://xahau-test.net");
+  await client.connect();
+
+  // 任意のアカウントがEscrowFinishを実行できます
+  const executor = Wallet.fromSeed(process.env.WALLET_SEED, {algorithm: 'secp256k1'});
+
+  // まず、account_objectsを照会してエスクローが存在することを確認
+  const objects = await client.request({
+    command: "account_objects",
+    account: ownerAddress,
+    type: "escrow",
+    ledger_index: "validated",
+  });
+
+  const escrow = objects.result.account_objects.find(
+    (obj) => obj.PreviousTxnLgrSeq !== undefined
+  );
+
+  if (!escrow) {
+    console.log("エスクローが見つかりません。すでに完了またはキャンセルされた可能性があります。");
+    await client.disconnect();
+    return;
+  }
+
+  console.log("=== エスクロー検出 ===");
+  console.log("Amount:", Number(escrow.Amount) / 1_000_000, "XAH");
+  console.log("Destination:", escrow.Destination);
+
+  // FinishAfterが既に過ぎているか確認
+  const RIPPLE_EPOCH_OFFSET = 946684800;
+  const now = Math.floor(Date.now() / 1000);
+  const finishAfterUnix = escrow.FinishAfter + RIPPLE_EPOCH_OFFSET;
+
+  if (now < finishAfterUnix) {
+    const remaining = finishAfterUnix - now;
+    console.log(
+      \`このエスクローはまだ完了できません。残り\${remaining}秒。\`
+    );
+    console.log(
+      \`利用可能時刻: \${new Date(finishAfterUnix * 1000).toISOString()}\`
+    );
+    await client.disconnect();
+    return;
+  }
+
+  console.log("ロック期間が経過しました。エスクローを完了しています...");
+
+  const escrowFinish = {
+    TransactionType: "EscrowFinish",
+    Account: executor.address,
+    Owner: ownerAddress,
+    OfferSequence: escrowSequence,
+  };
+
+  const prepared = await client.autofill(escrowFinish);
+  const signed = executor.sign(prepared);
+  const result = await client.submitAndWait(signed.tx_blob);
+
+  const txResult = result.result.meta.TransactionResult;
+  console.log("=== EscrowFinish ===");
+  console.log("結果:", txResult);
+
+  if (txResult === "tesSUCCESS") {
+    console.log("エスクロー完了！資金が送付されました。");
+    console.log("Hash:", signed.hash);
+  } else if (txResult === "tecNO_TARGET") {
+    console.log("エスクローが見つかりません。キャンセルされた可能性があります。");
+  }
+
+  await client.disconnect();
+}
+
+// 作成者のアドレスとEscrowCreateのSequenceを使用
+finishEscrow("rCreatorAddress", 12345);`,
           },
         },
       ],
       slides: [
         {
-          title: { es: "¿Qué es un Escrow?", en: "What is an Escrow?", jp: "" },
+          title: { es: "¿Qué es un Escrow?", en: "What is an Escrow?", jp: "エスクローとは？" },
           content: {
             es: "Pago condicional que bloquea fondos\n\n• Bloqueo temporal (FinishAfter)\n• Cancelación automática (CancelAfter)\n• Condición criptográfica (Condition)\n\nUsos: pagos programados, vesting, atomic swaps",
             en: "Conditional payment that locks funds\n\n• Time lock (FinishAfter)\n• Automatic cancellation (CancelAfter)\n• Cryptographic condition (Condition)\n\nUses: scheduled payments, vesting, atomic swaps",
-            jp: "",
+            jp: "資金をロックする条件付き支払い\n\n• 時間ロック（FinishAfter）\n• 自動キャンセル（CancelAfter）\n• 暗号条件（Condition）\n\n用途：スケジュール支払い、ベスティング、アトミックスワップ",
           },
           visual: "🔐",
         },
         {
-          title: { es: "Ciclo de vida del Escrow", en: "Escrow lifecycle", jp: "" },
+          title: { es: "Ciclo de vida del Escrow", en: "Escrow lifecycle", jp: "エスクローのライフサイクル" },
           content: {
             es: "1. EscrowCreate → Bloquea los fondos\n     ↓ (pasa el tiempo)\n2. EscrowFinish → Libera al destinatario\n     ó\n2. EscrowCancel → Devuelve al creador\n\n• FinishAfter debe pasar antes de Finish\n• CancelAfter debe pasar antes de Cancel",
             en: "1. EscrowCreate → Locks the funds\n     ↓ (time passes)\n2. EscrowFinish → Releases to recipient\n     or\n2. EscrowCancel → Returns to creator\n\n• FinishAfter must pass before Finish\n• CancelAfter must pass before Cancel",
-            jp: "",
+            jp: "1. EscrowCreate → 資金をロック\n     ↓ （時間経過）\n2. EscrowFinish → 受取人にリリース\n     または\n2. EscrowCancel → 作成者に返還\n\n• Finish前にFinishAfterが必要\n• Cancel前にCancelAfterが必要",
           },
           visual: "⏳",
         },
         {
-          title: { es: "Crypto-condiciones", en: "Crypto-conditions", jp: "" },
+          title: { es: "Crypto-condiciones", en: "Crypto-conditions", jp: "暗号条件" },
           content: {
             es: "Escrows con prueba criptográfica:\n\n• Condition = hash SHA-256\n• Fulfillment = preimagen secreta\n• Solo quien conozca el secreto puede completar\n• Basado en Interledger Protocol\n\nIdeal para intercambios trustless entre partes",
             en: "Escrows with cryptographic proof:\n\n• Condition = SHA-256 hash\n• Fulfillment = secret preimage\n• Only those who know the secret can complete\n• Based on Interledger Protocol\n\nIdeal for trustless exchanges between parties",
-            jp: "",
+            jp: "暗号証明付きエスクロー：\n\n• Condition = SHA-256ハッシュ\n• Fulfillment = 秘密のプリイメージ\n• 秘密を知る者だけが完了可能\n• Interledgerプロトコルに基づく\n\n当事者間のトラストレス交換に最適",
           },
           visual: "🔑",
         },
@@ -440,7 +619,7 @@ finishEscrow("rCreatorAddress", 12345);`,
       title: {
         es: "Cheques: pagos diferidos",
         en: "Checks: Deferred Payments",
-        jp: "",
+        jp: "チェック：遅延支払い",
       },
       theory: {
         es: `Un **Check** (cheque) es similar a un cheque bancario tradicional: el emisor crea un cheque por una cantidad determinada, y el receptor puede cobrarlo cuando lo desee. A diferencia de un pago directo, los fondos **no se transfieren inmediatamente**, el receptor debe ejecutar una acción para cobrar el cheque.
@@ -575,14 +754,79 @@ Either party (sender or recipient) can cancel a check. An expired check can also
 - \`tecNO_LINE\`: For IOUs, the recipient has no TrustLine with the token issuer
 - \`tecUNFUNDED\`: The check issuer has insufficient funds at the time of cashing
 - \`tecEXPIRED\`: The check has expired`,
-        jp: "",
+        jp: `**チェック**は従来の銀行小切手に似ています：送信者は特定の金額のチェックを作成し、受取人はいつでも換金できます。直接支払いとは異なり、資金は**即座に転送されません**—受取人がチェックを換金するための行動を取る必要があります。
+
+### 直接支払いの代わりにチェックを使う理由は？
+
+- **受取人が換金タイミングをコントロール**：受取人が正確な時期を決めたい場合に便利
+- **受取人がアクティブである必要がない**：チェックは換金を待ってレジャーに残ります
+- **部分支払いが可能**：受取人はチェックの合計金額より少ない金額を換金できます
+- **ネイティブXAHとIOUをサポート**：XAHとトークンの両方でチェックを作成できます
+
+### CheckCreate：チェックの作成
+
+| フィールド | 説明 |
+|---|---|
+| \`TransactionType\` | \`"CheckCreate"\` |
+| \`Account\` | チェックを発行するアカウント |
+| \`Destination\` | チェックを換金できるアカウント |
+| \`SendMax\` | 換金可能な最大金額 |
+| \`Expiration\` | （オプション）チェックが失効するタイムスタンプ |
+| \`InvoiceID\` | （オプション）チェックの目的を識別する256ビットのハッシュ |
+
+\`SendMax\`はIOUの場合、文字列（XAH drops）またはAmountオブジェクトになります：
+\`\`\`
+// ネイティブXAHのチェック
+"SendMax": "10000000"  // 10 XAH（drops単位）
+
+// IOUのチェック
+"SendMax": {
+  "currency": "USD",
+  "issuer": "rTokenIssuerAddress",
+  "value": "100"
+}
+\`\`\`
+
+### CheckCash：チェックの換金
+
+受取人は\`CheckCash\`でチェックを換金します。2つのモードがあります：
+
+1. **Amount**：正確な金額を換金（SendMax以下でなければなりません）
+2. **DeliverMin**：少なくともこの金額を換金（価値が変動する可能性のあるIOUで便利）
+
+| フィールド | 説明 |
+|---|---|
+| \`TransactionType\` | \`"CheckCash"\` |
+| \`Account\` | 受取アカウント（換金する側） |
+| \`CheckID\` | レジャー内のチェックのID |
+| \`Amount\` | 換金する正確な金額（オプション1） |
+| \`DeliverMin\` | 最低許容金額（オプション2） |
+
+**重要**：\`Amount\`**または**\`DeliverMin\`を使用し、両方は使用しないでください。
+
+### CheckCancel：チェックのキャンセル
+
+どちらの当事者（送信者または受取人）もチェックをキャンセルできます。期限切れのチェックもキャンセルできます。
+
+| フィールド | 説明 |
+|---|---|
+| \`TransactionType\` | \`"CheckCancel"\` |
+| \`Account\` | キャンセルを実行するアカウント |
+| \`CheckID\` | キャンセルするチェックのID |
+
+### よくあるエラー
+
+- \`tecNO_ENTRY\`：CheckIDが存在しません（すでに換金またはキャンセル済み）
+- \`tecNO_LINE\`：IOUの場合、受取人がトークン発行者とのTrustLineを持っていません
+- \`tecUNFUNDED\`：換金時にチェック発行者の残高が不足しています
+- \`tecEXPIRED\`：チェックが失効しています`,
       },
       codeBlocks: [
         {
           title: {
             es: "Crear un cheque",
             en: "Create a check",
-            jp: "",
+            jp: "チェックの作成",
           },
           language: "javascript",
           code: {
@@ -678,14 +922,59 @@ async function checkExample() {
 }
 
 checkExample();`,
-            jp: "",
+            jp: `require("dotenv").config();
+const { Client, Wallet, xahToDrops } = require("xahau");
+
+async function checkExample() {
+  const client = new Client("wss://xahau-test.net");
+  await client.connect();
+
+  const sender = Wallet.fromSeed(process.env.WALLET_SEED, {algorithm: 'secp256k1'});
+  const receiverAddress = "rReceiverAddress"; // 受取人のアドレスに置き換え、次の例のためにそのアカウントのシードを.envにCASH_SEEDとして保存
+
+  // === 1. チェックの作成 ===
+  const RIPPLE_EPOCH_OFFSET = 946684800;
+  const expiration = Math.floor(Date.now() / 1000) - RIPPLE_EPOCH_OFFSET + 7 * 24 * 60 * 60; // 7日後に失効
+
+  const checkCreate = {
+    TransactionType: "CheckCreate",
+    Account: sender.address,
+    Destination: receiverAddress,
+    SendMax: xahToDrops(50), // 最大50 XAH
+    Expiration: expiration,
+  };
+
+  const prepared = await client.autofill(checkCreate);
+  const signed = sender.sign(prepared);
+  const result = await client.submitAndWait(signed.tx_blob);
+
+  console.log("=== CheckCreate ===");
+  console.log("結果:", result.result.meta.TransactionResult);
+
+  if (result.result.meta.TransactionResult === "tesSUCCESS") {
+    // 影響を受けたノードからCheckIDを検索
+    const createdNode = result.result.meta.AffectedNodes.find(
+      (node) => node.CreatedNode && node.CreatedNode.LedgerEntryType === "Check"
+    );
+
+    if (createdNode) {
+      const checkID = createdNode.CreatedNode.LedgerIndex;
+      console.log("CheckID:", checkID);
+      console.log("このCheckIDを保存してください。あなたのアカウントでチェックを換金するために必要です: " + sender.address);
+    }
+  }
+
+  await client.disconnect();
+}
+
+checkExample();`,
           },
         },
         {
           title: {
             es: "Cobrar (cash) un cheque recibido",
             en: "Cash (collect) a received check",
-            jp: "",
+            jp: "受け取ったチェックを換金（cash）する",
           },
           language: "javascript",
           code: {
@@ -795,35 +1084,87 @@ async function cashCheck(checkID) {
 
 // Use the CheckID obtained when creating the check
 cashCheck("YOUR_CHECK_ID_HERE");`,
-            jp: "",
+            jp: `require("dotenv").config();
+const { Client, Wallet, xahToDrops } = require("xahau");
+
+async function cashCheck(checkID) {
+  const client = new Client("wss://xahau-test.net");
+  await client.connect();
+
+  // 受取人がチェックを換金
+  const receiver = Wallet.fromSeed(process.env.CASH_SEED, {algorithm: 'secp256k1'});
+
+  // オプション1: 正確な金額を換金
+  const checkCash = {
+    TransactionType: "CheckCash",
+    Account: receiver.address,
+    CheckID: checkID,
+    Amount: xahToDrops(50), // 正確に50 XAHを換金
+  };
+
+  // オプション2（代替）: 最低金額以上を換金
+  // const checkCash = {
+  //   TransactionType: "CheckCash",
+  //   Account: receiver.address,
+  //   CheckID: checkID,
+  //   DeliverMin: xahToDrops(40), // 少なくとも40 XAH
+  // };
+
+  const prepared = await client.autofill(checkCash);
+  const signed = receiver.sign(prepared);
+  const result = await client.submitAndWait(signed.tx_blob);
+
+  const txResult = result.result.meta.TransactionResult;
+  console.log("=== CheckCash ===");
+  console.log("結果:", txResult);
+
+  if (txResult === "tesSUCCESS") {
+    console.log("チェックの換金に成功しました！");
+    const delivered = result.result.meta.delivered_amount;
+    if (typeof delivered === "string") {
+      console.log("受取金額:", Number(delivered) / 1_000_000, "XAH");
+    } else {
+      console.log("受取金額:", delivered.value, delivered.currency);
+    }
+  } else if (txResult === "tecNO_ENTRY") {
+    console.log("チェックが見つかりません。キャンセルされたかすでに換金済みの可能性があります。");
+  } else if (txResult === "tecUNFUNDED") {
+    console.log("チェック発行者の残高が不足しています。");
+  }
+
+  await client.disconnect();
+}
+
+// チェック作成時に取得したCheckIDを使用
+cashCheck("YOUR_CHECK_ID_HERE");`,
           },
         },
       ],
       slides: [
         {
-          title: { es: "¿Qué es un Check?", en: "What is a Check?", jp: "" },
+          title: { es: "¿Qué es un Check?", en: "What is a Check?", jp: "チェックとは？" },
           content: {
             es: "Similar a un cheque bancario tradicional\n\n• El emisor crea el cheque (CheckCreate)\n• El receptor lo cobra cuando quiera (CheckCash)\n• Los fondos NO se transfieren al crear\n• Soporta XAH nativo e IOUs\n• Puede tener fecha de expiración",
             en: "Similar to a traditional bank check\n\n• Sender creates the check (CheckCreate)\n• Recipient cashes it whenever (CheckCash)\n• Funds are NOT transferred at creation\n• Supports native XAH and IOUs\n• Can have an expiration date",
-            jp: "",
+            jp: "従来の銀行小切手に似ています\n\n• 送信者がチェックを作成（CheckCreate）\n• 受取人がいつでも換金（CheckCash）\n• 作成時に資金は転送されない\n• ネイティブXAHとIOUをサポート\n• 有効期限を設定可能",
           },
           visual: "📝",
         },
         {
-          title: { es: "Ciclo de vida del Check", en: "Check lifecycle", jp: "" },
+          title: { es: "Ciclo de vida del Check", en: "Check lifecycle", jp: "チェックのライフサイクル" },
           content: {
             es: "1. CheckCreate → Emisor crea el cheque\n     ↓ (el receptor decide cuándo)\n2. CheckCash → Receptor cobra el cheque\n     ó\n2. CheckCancel → Cualquiera lo cancela\n\n• Amount = cobro exacto\n• DeliverMin = cobro mínimo aceptable\n• Cheques expirados se pueden cancelar",
             en: "1. CheckCreate → Sender creates the check\n     ↓ (recipient decides when)\n2. CheckCash → Recipient cashes the check\n     or\n2. CheckCancel → Either party cancels it\n\n• Amount = exact amount to cash\n• DeliverMin = minimum acceptable amount\n• Expired checks can be cancelled",
-            jp: "",
+            jp: "1. CheckCreate → 送信者がチェックを作成\n     ↓ （受取人が決めるまで）\n2. CheckCash → 受取人がチェックを換金\n     または\n2. CheckCancel → どちらの当事者もキャンセル可能\n\n• Amount = 換金する正確な金額\n• DeliverMin = 最低許容金額\n• 期限切れのチェックはキャンセル可能",
           },
           visual: "🔄",
         },
         {
-          title: { es: "Check vs Payment vs Escrow", en: "Check vs Payment vs Escrow", jp: "" },
+          title: { es: "Check vs Payment vs Escrow", en: "Check vs Payment vs Escrow", jp: "チェック vs 支払い vs エスクロー" },
           content: {
             es: "Payment → Transferencia inmediata\n\nEscrow → Fondos bloqueados con condiciones\n• Tiempo, crypto-condición o ambos\n• Fondos realmente bloqueados\n\nCheck → Promesa de pago diferido\n• Receptor decide cuándo cobrar\n• Fondos NO bloqueados (pueden gastarse)\n• Más flexible, menos garantías",
             en: "Payment → Immediate transfer\n\nEscrow → Funds locked with conditions\n• Time, crypto-condition or both\n• Funds actually locked\n\nCheck → Deferred payment promise\n• Recipient decides when to cash\n• Funds NOT locked (can be spent)\n• More flexible, fewer guarantees",
-            jp: "",
+            jp: "Payment → 即時転送\n\nEscrow → 条件付きで資金をロック\n• 時間、暗号条件、または両方\n• 資金は実際にロックされる\n\nCheck → 遅延支払いの約束\n• 受取人が換金タイミングを決める\n• 資金はロックされない（使用可能）\n• より柔軟、保証は少ない",
           },
           visual: "⚖️",
         },
@@ -834,7 +1175,7 @@ cashCheck("YOUR_CHECK_ID_HERE");`,
       title: {
         es: "Tickets: secuencias fuera de orden",
         en: "Tickets: Out-of-Order Sequences",
-        jp: "",
+        jp: "チケット：順序外のシーケンス",
       },
       theory: {
         es: `Un **Ticket** es un mecanismo que permite enviar transacciones **fuera del orden secuencial** normal. Normalmente, cada transacción en Xahau debe usar el siguiente número de \`Sequence\` de la cuenta. Los Tickets eliminan esa restricción reservando números de secuencia por adelantado.
@@ -933,14 +1274,61 @@ The Ticket is automatically destroyed when used, releasing the reserve.
 ### Cancelling unused Tickets
 
 If you no longer need a Ticket, you can cancel it to release the reserve. There is no specific transaction to cancel Tickets. Instead, you can use an empty \`AccountSet\` transaction (no changes) that consumes the Ticket.`,
-        jp: "",
+        jp: `**チケット**は、通常の順次シーケンス**の外で**トランザクションを送信するためのメカニズムです。通常、Xahauの各トランザクションはアカウントの次の\`Sequence\`番号を使用する必要があります。チケットはシーケンス番号を事前に予約することでこの制限をなくします。
+
+### チケットとは？
+
+Xahauの各アカウントには、トランザクションごとにインクリメントされる\`Sequence\`番号があります。これはトランザクションが厳密な順序で処理される必要があることを意味します。チケットはこの問題を解決します：
+
+- チケットは将来の使用のためにシーケンス番号を**予約**します
+- チケットを使用するトランザクションは\`Sequence\`の代わりに\`TicketSequence\`を指定します
+- チケットはいつ作成されたかに関わらず**任意の順序**で使用できます
+
+### チケットの用途は？
+
+- **並行トランザクション**：順序に依存せずに複数のトランザクションを準備して署名
+- **事前署名トランザクション**：事前にトランザクションに署名し、便利なときに送信
+- **マルチサイニング**：異なる署名者がシーケンスをブロックせずに独立したトランザクションを準備
+- **コンティンジェンシー**：通常のシーケンスを消費せずにバックアップトランザクションを準備
+
+### TicketCreate：チケットの予約
+
+\`TicketCreate\`トランザクションは1つ以上のシーケンス番号を予約します：
+
+| フィールド | 説明 |
+|---|---|
+| \`TransactionType\` | \`"TicketCreate"\` |
+| \`Account\` | チケットを予約するアカウント |
+| \`TicketCount\` | 作成するチケット数（1〜250） |
+
+### 予約コスト
+
+作成された各チケットは、TrustLineやDEXのオファーと同様に、アカウントの**オーナーリザーブ**を消費します。つまり、アクティブなチケットごとにアカウントに追加のXAHをロックしておく必要があります。チケットは使用またはキャンセルされたときに削除され（リザーブが解放されます）。
+
+### 制限
+
+- **トランザクションあたりの最大数**：単一の\`TicketCreate\`トランザクションで最大**250チケット**を作成可能
+- **アカウントあたりの最大数**：アカウントは最大**250チケット**を同時にアクティブにできます
+- チケットは**失効しません**—使用またはキャンセルされるまでレジャーに残ります
+
+### トランザクションでのチケットの使用
+
+チケットを使用するには、トランザクションにこれらのフィールドを含めます：
+- \`Sequence: 0\` — 通常のシーケンスを使用しないことを示す
+- \`TicketSequence: N\` — 消費するチケット番号
+
+チケットは使用時に自動的に破棄され、リザーブが解放されます。
+
+### 未使用チケットのキャンセル
+
+チケットが不要になった場合、キャンセルしてリザーブを解放できます。チケットをキャンセルするための特定のトランザクションはありません。代わりに、チケットを消費する空の\`AccountSet\`トランザクション（変更なし）を使用できます。`,
       },
       codeBlocks: [
         {
           title: {
             es: "Crear Tickets y usarlos para encadenar múltiples pagos",
             en: "Create Tickets and use them to chain multiple payments",
-            jp: "",
+            jp: "チケットを作成して複数の支払いに使用する",
           },
           language: "javascript",
           code: {
@@ -1104,35 +1492,114 @@ async function paymentsWithTickets() {
 }
 
 paymentsWithTickets();`,
-            jp: "",
+            jp: `require("dotenv").config();
+const { Client, Wallet, xahToDrops } = require("xahau");
+
+async function paymentsWithTickets() {
+  const client = new Client("wss://xahau-test.net");
+  await client.connect();
+
+  const sender = Wallet.fromSeed(process.env.WALLET_SEED, {algorithm: 'secp256k1'});
+
+  // === ステップ1: 3つのチケットを作成 ===
+  console.log("=== ステップ1: チケットの作成 ===");
+  const ticketCreate = {
+    TransactionType: "TicketCreate",
+    Account: sender.address,
+    TicketCount: 3, // 3チケットを予約
+  };
+
+  const prepTicket = await client.autofill(ticketCreate);
+  const signedTicket = sender.sign(prepTicket);
+  const resultTicket = await client.submitAndWait(signedTicket.tx_blob);
+
+  console.log("TicketCreate:", resultTicket.result.meta.TransactionResult);
+
+  if (resultTicket.result.meta.TransactionResult !== "tesSUCCESS") {
+    console.log("チケットの作成エラー。");
+    await client.disconnect();
+    return;
+  }
+
+  // 作成されたノードからTicketSequence値を抽出
+  const ticketSequences = resultTicket.result.meta.AffectedNodes
+    .filter((n) => n.CreatedNode?.LedgerEntryType === "Ticket")
+    .map((n) => n.CreatedNode.NewFields.TicketSequence)
+    .sort((a, b) => a - b);
+
+  console.log("作成されたチケット:", ticketSequences);
+
+  // === ステップ2: チケットを使って支払いを送信（任意の順序で）===
+  console.log("=== ステップ2: チケットで支払いを送信 ===");
+
+  const destinations = [
+    { address: "rDestination1XXXXXXXXXXXXXXXXXXXXX", amount: 5,  label: "支払いA" },
+    { address: "rDestination2XXXXXXXXXXXXXXXXXXXXX", amount: 10, label: "支払いB" },
+    { address: "rDestination3XXXXXXXXXXXXXXXXXXXXX", amount: 15, label: "支払いC" },
+  ];
+
+  // 任意の順序で、並行して送信することもできます
+  // 柔軟性を示すために逆順で送信します
+  for (let i = destinations.length - 1; i >= 0; i--) {
+    const dest = destinations[i];
+    const ticketSeq = ticketSequences[i];
+
+    const payment = {
+      TransactionType: "Payment",
+      Account: sender.address,
+      Destination: dest.address,
+      Amount: xahToDrops(dest.amount),
+      Sequence: 0,               // 通常のシーケンスを使用しない
+      TicketSequence: ticketSeq,  // 予約済みチケットを使用
+    };
+
+    const prepared = await client.autofill(payment);
+    // autofillがSequenceを上書きする可能性があるため強制設定
+    prepared.Sequence = 0;
+    prepared.TicketSequence = ticketSeq;
+
+    const signed = sender.sign(prepared);
+    const result = await client.submitAndWait(signed.tx_blob);
+
+    const txResult = result.result.meta.TransactionResult;
+    console.log(\`\${dest.label} (Ticket \${ticketSeq}): \${txResult} → \${dest.amount} XAH\`);
+  }
+
+  console.log("すべての支払いをチケットで送信しました！");
+  console.log("使用済みチケットは破棄され、リザーブが解放されました。");
+
+  await client.disconnect();
+}
+
+paymentsWithTickets();`,
           },
         },
       ],
       slides: [
         {
-          title: { es: "¿Qué es un Ticket?", en: "What is a Ticket?", jp: "" },
+          title: { es: "¿Qué es un Ticket?", en: "What is a Ticket?", jp: "チケットとは？" },
           content: {
             es: "Reserva números de secuencia por adelantado\n\n• Permite transacciones fuera de orden\n• Sequence: 0 + TicketSequence: N\n• Se destruye al usarse\n• Máximo 250 por cuenta\n\nCada Ticket consume reserva de propietario",
             en: "Reserves sequence numbers in advance\n\n• Allows out-of-order transactions\n• Sequence: 0 + TicketSequence: N\n• Destroyed when used\n• Maximum 250 per account\n\nEach Ticket consumes owner reserve",
-            jp: "",
+            jp: "シーケンス番号を事前に予約\n\n• 順序外のトランザクションを許可\n• Sequence: 0 + TicketSequence: N\n• 使用時に破棄\n• アカウントあたり最大250\n\n各チケットはオーナーリザーブを消費",
           },
           visual: "🎫",
         },
         {
-          title: { es: "Casos de uso", en: "Use cases", jp: "" },
+          title: { es: "Casos de uso", en: "Use cases", jp: "ユースケース" },
           content: {
             es: "• Transacciones paralelas sin bloqueo\n• Pre-firmar txs para enviar después\n• Multi-signing independiente\n• Contingencias y respaldos\n\nTicketCreate → Reservar (1-250)\nUsar → Sequence: 0 + TicketSequence\nCancelar → AccountSet vacío con Ticket",
             en: "• Parallel transactions without blocking\n• Pre-sign txs to send later\n• Independent multi-signing\n• Contingencies and fallbacks\n\nTicketCreate → Reserve (1-250)\nUse → Sequence: 0 + TicketSequence\nCancel → Empty AccountSet with Ticket",
-            jp: "",
+            jp: "• ブロックなしの並行トランザクション\n• 後で送信するための事前署名tx\n• 独立したマルチサイニング\n• コンティンジェンシーとバックアップ\n\nTicketCreate → 予約（1〜250）\n使用 → Sequence: 0 + TicketSequence\nキャンセル → チケット付き空のAccountSet",
           },
           visual: "🔀",
         },
         {
-          title: { es: "Tickets vs Secuencia normal", en: "Tickets vs Normal Sequence", jp: "" },
+          title: { es: "Tickets vs Secuencia normal", en: "Tickets vs Normal Sequence", jp: "チケット vs 通常のシーケンス" },
           content: {
             es: "Secuencia normal:\n• Estricto orden: 1, 2, 3, 4...\n• Si falla la 2, la 3 se bloquea\n\nCon Tickets:\n• Cualquier orden: 3, 1, 2...\n• Independientes entre sí\n• Cada uno consume owner reserve\n• Se liberan al usarse o cancelarse",
             en: "Normal sequence:\n• Strict order: 1, 2, 3, 4...\n• If 2 fails, 3 is blocked\n\nWith Tickets:\n• Any order: 3, 1, 2...\n• Independent from each other\n• Each consumes owner reserve\n• Released when used or cancelled",
-            jp: "",
+            jp: "通常のシーケンス：\n• 厳格な順序：1, 2, 3, 4...\n• 2が失敗すると3はブロックされる\n\nチケット使用時：\n• 任意の順序：3, 1, 2...\n• 互いに独立\n• 各チケットはオーナーリザーブを消費\n• 使用またはキャンセル時に解放",
           },
           visual: "⚖️",
         },
@@ -1143,7 +1610,7 @@ paymentsWithTickets();`,
       title: {
         es: "ClaimReward: reclamar recompensas de la red",
         en: "ClaimReward: Claiming Network Rewards",
-        jp: "",
+        jp: "ClaimReward：ネットワーク報酬の請求",
       },
       theory: {
         es: `Xahau cuenta con un sistema de **recompensas nativas** que distribuye XAH a las cuentas que participan activamente en la red. La transacción \`ClaimReward\` permite reclamar estas recompensas acumuladas.
@@ -1214,14 +1681,47 @@ If for any reason you want to stop participating in the rewards system, you can 
 - The \`ClaimReward\` transaction fee is standard (like any other transaction)
 - Compatible with accounts that have Hooks installed
 - The \`Issuer\` address is specific to each network (testnet vs mainnet)`,
-        jp: "",
+        jp: `Xahauには、ネットワークに積極的に参加するアカウントにXAHを配布する**ネイティブ報酬システム**があります。\`ClaimReward\`トランザクションにより、これらの累積報酬を請求できます。
+
+### Xahauの報酬の仕組みは？
+
+ステーキングが必要なProof of Stakeブロックチェーンとは異なり、Xahauではアクティブなバランスを維持するアカウントに報酬が配布されます。仕組みは以下の通りです：
+
+- XAHのバランスに基づいて報酬が自動的に累積されます
+- 受け取るには、定期的に\`ClaimReward\`トランザクションを送信する必要があります
+- 請求時に報酬がアカウントバランスに直接追加されます
+- デリゲート、資金のロック、バリデータノードの実行は不要です
+
+### ClaimRewardトランザクション
+
+| フィールド | 説明 |
+|---|---|
+| \`TransactionType\` | \`"ClaimReward"\` |
+| \`Account\` | 報酬を請求するあなたのアカウント |
+| \`Issuer\` | 報酬発行者のアドレス（ネットワークのジェネシスアカウント） |
+| \`Flags\` | 報酬の受け取りを停止するには\`1\` |
+
+### 報酬の有効化と請求
+
+\`ClaimReward\`を初めて送信すると、報酬を受け取るためのアカウントが**有効化**されます。以降の実行では最後の請求以降に累積された報酬を請求します。報酬を最新の状態に保つために定期的に（例えば毎日または毎週）請求することをお勧めします。
+
+### 報酬の無効化
+
+何らかの理由で報酬システムへの参加を停止したい場合は、\`Flags: 1\`を付けて\`ClaimReward\`を送信できます。これによりアカウントが報酬システムから無効化されます。
+
+### 注意事項
+
+- 報酬はバランスと最後の請求からの経過時間によって異なります
+- \`ClaimReward\`トランザクションのfeeは標準（他のトランザクションと同様）です
+- Hooksがインストールされたアカウントと互換性があります
+- \`Issuer\`アドレスは各ネットワーク（testnet vs mainnet）によって異なります`,
       },
       codeBlocks: [
         {
           title: {
             es: "Reclamar recompensas de la red",
             en: "Claim network rewards",
-            jp: "",
+            jp: "ネットワーク報酬の請求",
           },
           language: "javascript",
           code: {
@@ -1337,26 +1837,81 @@ async function claimReward() {
 }
 
 claimReward();`,
-            jp: "",
+            jp: `require("dotenv").config();
+const { Client, Wallet } = require("xahau");
+
+async function claimReward() {
+  const client = new Client("wss://xahau-test.net");
+  await client.connect();
+
+  const wallet = Wallet.fromSeed(process.env.WALLET_SEED, { algorithm: "secp256k1" });
+
+  // 請求前にアカウント情報を照会
+  const accountInfo = await client.request({
+    command: "account_info",
+    account: wallet.address,
+    ledger_index: "validated",
+  });
+
+  const balanceBefore = Number(accountInfo.result.account_data.Balance) / 1_000_000;
+  console.log("=== 請求前の状態 ===");
+  console.log("アカウント:", wallet.address);
+  console.log("現在の残高:", balanceBefore, "XAH");
+
+  // ClaimRewardを送信
+  // Issuer: ネットワークのジェネシスアカウント（testnetとmainnetで異なる）
+  const claimReward = {
+    TransactionType: "ClaimReward",
+    Account: wallet.address,
+    Issuer: "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh", // testnetジェネシスアカウント
+  };
+
+  const prepared = await client.autofill(claimReward);
+  const signed = wallet.sign(prepared);
+  const result = await client.submitAndWait(signed.tx_blob);
+
+  const txResult = result.result.meta.TransactionResult;
+  console.log("=== ClaimReward ===");
+  console.log("結果:", txResult);
+  console.log("Hash:", signed.hash);
+
+  if (txResult === "tesSUCCESS") {
+    // 請求後の残高を照会
+    const accountAfter = await client.request({
+      command: "account_info",
+      account: wallet.address,
+      ledger_index: "validated",
+    });
+
+    const balanceAfter = Number(accountAfter.result.account_data.Balance) / 1_000_000;
+    console.log("=== 請求後の状態 ===");
+    console.log("新しい残高:", balanceAfter, "XAH");
+    console.log("受取報酬:", (balanceAfter - balanceBefore).toFixed(6), "XAH");
+  }
+
+  await client.disconnect();
+}
+
+claimReward();`,
           },
         },
       ],
       slides: [
         {
-          title: { es: "ClaimReward", en: "ClaimReward", jp: "" },
+          title: { es: "ClaimReward", en: "ClaimReward", jp: "ClaimReward" },
           content: {
             es: "Recompensas nativas de Xahau\n\n• Se acumulan según tu balance de XAH\n• No requiere staking ni nodos\n• ClaimReward para reclamarlas\n• Se suman directamente a tu balance\n\nReclamar periódicamente (diario/semanal)",
             en: "Native Xahau rewards\n\n• Accumulated based on your XAH balance\n• No staking or nodes required\n• ClaimReward to collect them\n• Added directly to your balance\n\nClaim periodically (daily/weekly)",
-            jp: "",
+            jp: "Xahauのネイティブ報酬\n\n• XAHバランスに基づいて累積\n• ステーキングもノードも不要\n• ClaimRewardで請求\n• バランスに直接追加\n\n定期的に請求（毎日・毎週）",
           },
           visual: "🎁",
         },
         {
-          title: { es: "Cómo reclamar", en: "How to claim", jp: "" },
+          title: { es: "Cómo reclamar", en: "How to claim", jp: "請求方法" },
           content: {
             es: "1ª vez → Activa tu cuenta para recompensas\nSiguientes → Reclama lo acumulado\n\nCampos:\n• Account: tu cuenta\n• Issuer: genesis account de la red\n• Flags: 0 (reclamar) / 1 (desactivar)\n\nFee estándar, compatible con Hooks",
             en: "1st time → Activates your account for rewards\nSubsequent → Claims accumulated amount\n\nFields:\n• Account: your account\n• Issuer: network genesis account\n• Flags: 0 (claim) / 1 (deactivate)\n\nStandard fee, compatible with Hooks",
-            jp: "",
+            jp: "1回目 → アカウントを報酬システムに有効化\n以降 → 累積分を請求\n\nフィールド：\n• Account: あなたのアカウント\n• Issuer: ネットワークのジェネシスアカウント\n• Flags: 0（請求）/ 1（無効化）\n\n標準fee、Hooksと互換",
           },
           visual: "💰",
         },
@@ -1367,7 +1922,7 @@ claimReward();`,
       title: {
         es: "Invoke: activar Hooks bajo demanda",
         en: "Invoke: Activating Hooks on Demand",
-        jp: "",
+        jp: "Invoke：オンデマンドでのHooksの実行",
       },
       theory: {
         es: `La transacción \`Invoke\` es un tipo de transacción exclusivo de Xahau que permite **activar un Hook deliberadamente**, sin necesidad de enviar un pago u otra transacción con efecto económico. Es la forma de "llamar" a un Hook de forma directa.
@@ -1436,14 +1991,44 @@ We can use Invoke for different purposes:
 - The Hook we want to activate must have \`Invoke\` enabled in its \`HookOn\` to react
 - The fee is standard, like any other transaction
 - Later, Xahau implemented the \`CronSet\` transaction for native task scheduling, but \`Invoke\` remains useful for custom cases or for activating Hooks on other accounts`,
-        jp: "",
+        jp: `\`Invoke\`トランザクションは、Xahau独自のトランザクションタイプで、支払いや経済的効果のある他のトランザクションを送信することなく、**意図的にHookを実行**できます。これはHookを直接「呼び出す」方法です。
+
+### なぜInvokeが存在するのか？
+
+Hooksはトランザクションがアカウントを通過したときにリアクティブに実行されます。しかし、**他のアクションを発生させることなく**Hookを実行する必要がある状況があります。
+
+### Invokeトランザクション
+
+| フィールド | 説明 |
+|---|---|
+| \`TransactionType\` | \`"Invoke"\` |
+| \`Account\` | Invokeを送信するアカウント |
+| \`Destination\` | （オプション）実行したいHookを持つアカウント。指定しない場合、アカウント自身のHooksを実行します |
+
+### InvokeのメカニズムInvokeはさまざまな目的で使用できます：
+
+- HookがInvokeを発行して別のHookを実行する
+- 必要なときにHookのロジックを実行するための手動トリガーとして\`Invoke\`を使用する
+- \`Invoke\`トランザクションに情報を追加（例えば\`Memos\`や\`HookParameters\`）してHookにデータを渡す
+
+### 自分のアカウントへのInvoke vs 他のアカウントへのInvoke
+
+- **Destinationなし**：\`Invoke\`はあなた自身のアカウントのHooksを実行します。メンテナンスや自己管理Hooksに便利
+- **Destinationあり**：\`Invoke\`は宛先アカウントのHooksを実行します。宛先HookはInvokeを送った人を識別して適切に対応できます
+
+### 注意事項
+
+- \`Invoke\`は資金を転送しません、これはトリガーにすぎません
+- 実行したいHookは、反応するために\`HookOn\`で\`Invoke\`が有効になっている必要があります
+- feeは他のトランザクションと同様に標準です
+- 後にXahauはネイティブタスクスケジューリングのために\`CronSet\`トランザクションを実装しましたが、\`Invoke\`はカスタムケースや他のアカウントのHooksを実行するために依然として便利です`,
       },
       codeBlocks: [
         {
           title: {
             es: "Invocar un Hook en otra cuenta",
             en: "Invoke a Hook on another account",
-            jp: "",
+            jp: "別のアカウントのHookをInvokeする",
           },
           language: "javascript",
           code: {
@@ -1513,27 +2098,59 @@ async function invokeHook() {
 }
 
 invokeHook();`,
-            jp: "",
+            jp: `require("dotenv").config();
+const { Client, Wallet } = require("xahau");
+
+async function invokeHook() {
+  const client = new Client("wss://xahau-test.net");
+  await client.connect();
+
+  const wallet = Wallet.fromSeed(process.env.WALLET_SEED, { algorithm: "secp256k1" });
+
+  // Hookがインストールされている他のアカウントにInvoke
+  const invoke = {
+    TransactionType: "Invoke",
+    Account: wallet.address,
+    Destination: "rAccountWithHookInstalled", // 実行したいHookを持つアカウント
+  };
+
+  const prepared = await client.autofill(invoke);
+  const signed = wallet.sign(prepared);
+  const result = await client.submitAndWait(signed.tx_blob);
+
+  const txResult = result.result.meta.TransactionResult;
+  console.log("=== Invoke ===");
+  console.log("結果:", txResult);
+  console.log("Hash:", signed.hash);
+
+  if (txResult === "tesSUCCESS") {
+    console.log("Hookがインストールされていた場合、正しく呼び出されたか確認してください。");
+  }
+
+  await client.disconnect();
+}
+
+invokeHook();`,
           },
         },
-        
+
       ],
       slides: [
         {
-          title: { es: "Invoke", en: "Invoke", jp: "" },
+          title: { es: "Invoke", en: "Invoke", jp: "Invoke" },
           content: {
             es: "Activar un Hook directamente\n\n• No transfiere fondos\n• Solo es un trigger para el Hook\n• Sin Destination → tus propios Hooks\n• Con Destination → Hooks de otra cuenta\n\nEl Hook debe tener Invoke en su HookOn",
             en: "Activate a Hook directly\n\n• Does not transfer funds\n• Just a trigger for the Hook\n• No Destination → your own Hooks\n• With Destination → another account's Hooks\n\nThe Hook must have Invoke enabled in HookOn",
-            jp: "",
+            jp: "Hookを直接実行\n\n• 資金を転送しない\n• Hookのトリガーのみ\n• Destinationなし → 自身のHooks\n• Destinationあり → 他のアカウントのHooks\n\nHookはHookOnでInvokeが有効になっている必要あり",
           },
           visual: "📡",
         },
         {
-          title: { es: "Casos de uso de Invoke", en: "Invoke use cases", jp: "" },
+          title: { es: "Casos de uso de Invoke", en: "Invoke use cases", jp: "Invokeのユースケース" },
           content: {
             es: "• Hook emite un Invoke para activar\n  otro Hook distinto\n• Trigger manual: activar lógica de un\n  Hook cuando lo necesites\n• Pasar datos al Hook via Memos\n  o HookParameters en el Invoke\n\nPara scheduling nativo usa CronSet.\nInvoke sigue siendo útil para casos\npersonalizados o Hooks de otras cuentas",
             en: "• A Hook emits an Invoke to activate\n  another Hook\n• Manual trigger: activate a Hook's logic\n  whenever you need it\n• Pass data to the Hook via Memos\n  or HookParameters in the Invoke\n\nFor native scheduling use CronSet.\nInvoke is still useful for custom cases\nor activating other accounts' Hooks",
-            jp: "",
+            jp: "• HookがInvokeを発行して\n  別のHookを実行\n• 手動トリガー：必要なときに\n  Hookのロジックを実行\n• InvokeのMemosまたは\n  HookParametersでHookにデータを渡す\n\nネイティブスケジューリングにはCronSetを使用。\nInvokeはカスタムケースや\n他のアカウントのHooksに引き続き有効",
           },
           visual: "⚡",
         },
@@ -1544,7 +2161,7 @@ invokeHook();`,
       title: {
         es: "SetRemarks: metadata en objetos del ledger",
         en: "SetRemarks: Metadata on Ledger Objects",
-        jp: "",
+        jp: "SetRemarks：レジャーオブジェクトへのメタデータ",
       },
       theory: {
         es: `La transacción \`SetRemarks\` permite adjuntar **pares clave-valor** a objetos existentes del ledger de Xahau. No es una forma de enviar mensajes ni de registrar datos en transacciones: es un mecanismo para **anotar objetos del ledger** (cuentas, ofertas, escrows, cheques, URITokens, TrustLines...) con metadata que queda asociada al propio objeto.
@@ -1625,14 +2242,90 @@ Si añades \`Flags: 1\` (\`tfImmutable\`) al crear una Remark, **no podrá ser m
 | \`tecIMMUTABLE\` | Se intenta modificar una Remark con \`tfImmutable\` |
 | \`tecTOO_MANY_REMARKS\` | El objeto ya tiene 32 Remarks (el máximo permitido) |`,
         en: "",
-        jp: "",
+        jp: `\`SetRemarks\`トランザクションは、Xahauレジャーの既存のオブジェクトに**キーと値のペア**を添付します。これはトランザクションでメッセージを送ったりデータを記録したりする方法ではありません。これはレジャーオブジェクト（アカウント、オファー、エスクロー、チェック、URIToken、TrustLine...）にオブジェクト自体に関連付けられたメタデータを**注釈する**メカニズムです。
+
+### どのタイプのオブジェクトがRemarksをサポートするか？
+
+\`SetRemarks\`は以下のタイプのレジャーオブジェクトにメタデータを添付できます：
+
+- **AccountRoot** — アカウント自体（アドレス、バランス、フラグ）
+- **Offer** — DEXのオファー
+- **Escrow** — 条件付き支払い
+- **Ticket** — シーケンスチケット
+- **PayChannel** — ペイメントチャンネル
+- **Check** — チェック
+- **DepositPreauth** — デポジット事前承認
+- **URIToken** — 非代替性トークン
+- **RippleState** — TrustLine
+
+オブジェクトの**所有者または発行者**のみがRemarksを変更できます（URITokensとTrustLineを除き、トークン発行者が権限を持ちます）。
+
+### SetRemarksのフィールド
+
+| フィールド | タイプ | 必須 | 説明 |
+|---|---|---|---|
+| \`TransactionType\` | String | Yes | \`"SetRemarks"\` |
+| \`Account\` | String | Yes | トランザクションを送信するアカウント（オブジェクトの所有者/発行者でなければなりません） |
+| \`ObjectID\` | Hash256 | Yes | Remarksを添付するレジャーオブジェクトのID |
+| \`Remarks\` | Array | Yes | 作成、変更、または削除する\`Remark\`オブジェクトの配列 |
+
+### 各Remarkの構造
+
+配列の各要素には以下を持つ\`Remark\`オブジェクトが含まれます：
+
+| フィールド | タイプ | 必須 | 説明 |
+|---|---|---|---|
+| \`RemarkName\` | Blob | Yes | Remarkの名前/キー（1〜256バイト）。オブジェクトごとに一意でなければなりません |
+| \`RemarkValue\` | Blob | No | Remarkの値（1〜256バイト）。Remarkを**削除するには省略** |
+| \`Flags\` | UInt32 | No | \`1\`（\`tfImmutable\`）はRemarkを**永続的かつ変更不可**にします |
+
+\`RemarkName\`と\`RemarkValue\`の値は**16進数**で表されます。
+
+### アカウントのObjectIDの取得
+
+自分のアカウント（AccountRoot）にRemarksを添付するには、レジャー内のオブジェクトの\`index\`フィールドである\`ObjectID\`が必要です：
+
+\`\`\`javascript
+const info = await client.request({
+  command: "account_info",
+  account: wallet.address,
+  ledger_index: "validated",
+});
+const objectID = info.result.account_data.index;
+\`\`\`
+
+他のオブジェクト（Escrow、Check、Offer...）の場合、\`ObjectID\`はオブジェクト作成時の\`AffectedNodes\`に表示される\`LedgerIndex\`です。
+
+### Remarkの削除
+
+対応する\`Remark\`オブジェクトの\`RemarkValue\`を省略します。Xahauはオブジェクトからそのエントリを削除します。
+
+### 不変のRemarks
+
+Remarkを作成するときに\`Flags: 1\`（\`tfImmutable\`）を追加すると、将来的に**変更または削除できなく**なります。永続的に封印する必要のある証明書やデータに便利です。
+
+### 制限とコスト
+
+- レジャーオブジェクトあたり最大**32 Remarks**
+- **追加fee**：トランザクション内の\`RemarkName\` + \`RemarkValue\`の各バイトあたり1 drop
+- 名前と値：それぞれ1〜256バイト
+- 名前は同じオブジェクト内で一意でなければなりません
+
+### よくあるエラー
+
+| エラー | 原因 |
+|---|---|
+| \`temDISABLED\` | Remarks Amendmentがネットワークで有効になっていない |
+| \`tecNO_PERMISSION\` | アカウントがオブジェクトの所有者/発行者ではない |
+| \`tecIMMUTABLE\` | \`tfImmutable\`フラグ付きのRemarkを変更しようとしている |
+| \`tecTOO_MANY_REMARKS\` | オブジェクトにすでに32個のRemarks（最大許容数）がある |`,
       },
       codeBlocks: [
         {
           title: {
             es: "Añadir y actualizar Remarks en tu cuenta (AccountRoot)",
             en: "Add and update Remarks on your account (AccountRoot)",
-            jp: "",
+            jp: "アカウント（AccountRoot）へのRemarksの追加と更新",
           },
           language: "javascript",
           code: {
@@ -1778,14 +2471,84 @@ async function setAccountRemarks() {
 }
 
 setAccountRemarks();`,
-            jp: "",
+            jp: `require("dotenv").config();
+const { Client, Wallet } = require("xahau");
+
+// RemarkNameとRemarkValueは16進数で表されます
+function toHex(str) {
+  return Buffer.from(str, "utf8").toString("hex").toUpperCase();
+}
+
+async function setAccountRemarks() {
+  const client = new Client("wss://xahau-test.net");
+  await client.connect();
+
+  const wallet = Wallet.fromSeed(process.env.WALLET_SEED, { algorithm: "secp256k1" });
+
+  // AccountRootのObjectIDを取得（account_infoの"index"フィールド）
+  const info = await client.request({
+    command: "account_info",
+    account: wallet.address,
+    ledger_index: "validated",
+  });
+  const objectID = info.result.account_data.index;
+
+  console.log("=== AccountRootへのSetRemarks ===");
+  console.log("アカウント:", wallet.address);
+  console.log("ObjectID:", objectID);
+
+  const setRemarks = {
+    TransactionType: "SetRemarks",
+    Account: wallet.address,
+    ObjectID: objectID,
+    Remarks: [
+      {
+        Remark: {
+          RemarkName: toHex("名前"),
+          RemarkValue: toHex("Learn Xahau Demo"),
+        },
+      },
+      {
+        Remark: {
+          RemarkName: toHex("web"),
+          RemarkValue: toHex("https://learnxahau.inftf.org"),
+        },
+      },
+      {
+        // 不変のRemark：今後変更・削除不可
+        Remark: {
+          RemarkName: toHex("作成日"),
+          RemarkValue: toHex(new Date().toISOString()),
+          Flags: 1, // tfImmutable
+        },
+      },
+    ],
+  };
+
+  const prepared = await client.autofill(setRemarks);
+  const signed = wallet.sign(prepared);
+  const result = await client.submitAndWait(signed.tx_blob);
+
+  const txResult = result.result.meta.TransactionResult;
+  console.log("結果:", txResult);
+  console.log("Hash:", signed.hash);
+
+  if (txResult === "tesSUCCESS") {
+    console.log("AccountRootにRemarksが添付されました。");
+    console.log("注意：'作成日'のRemarkは不変で変更できません。");
+  }
+
+  await client.disconnect();
+}
+
+setAccountRemarks();`,
           },
         },
         {
           title: {
             es: "Eliminar una Remark (omitir RemarkValue)",
             en: "Delete a Remark (omit RemarkValue)",
-            jp: "",
+            jp: "Remarkの削除（RemarkValueを省略）",
           },
           language: "javascript",
           code: {
@@ -1911,35 +2674,95 @@ async function deleteRemark() {
 }
 
 deleteRemark();`,
-            jp: "",
+            jp: `require("dotenv").config();
+const { Client, Wallet } = require("xahau");
+
+function toHex(str) {
+  return Buffer.from(str, "utf8").toString("hex").toUpperCase();
+}
+
+async function deleteRemark() {
+  const client = new Client("wss://xahau-test.net");
+  await client.connect();
+
+  const wallet = Wallet.fromSeed(process.env.WALLET_SEED, { algorithm: "secp256k1" });
+
+  // AccountRootのObjectIDを取得
+  const info = await client.request({
+    command: "account_info",
+    account: wallet.address,
+    ledger_index: "validated",
+  });
+  const objectID = info.result.account_data.index;
+
+  // Remarkの削除：RemarkValueなしでRemarkNameのみ含める
+  const setRemarks = {
+    TransactionType: "SetRemarks",
+    Account: wallet.address,
+    ObjectID: objectID,
+    Remarks: [
+      {
+        Remark: {
+          RemarkName: toHex("ウェブ"), // "ウェブ"という名前のRemarkを削除
+          // RemarkValueなし → エントリが削除される
+        },
+      },
+      {
+        Remark: {
+          RemarkName: toHex("名前"), // "名前"の値を更新
+          RemarkValue: toHex("更新済みアカウント"),
+        },
+      },
+    ],
+  };
+
+  const prepared = await client.autofill(setRemarks);
+  const signed = wallet.sign(prepared);
+  const result = await client.submitAndWait(signed.tx_blob);
+
+  const txResult = result.result.meta.TransactionResult;
+  console.log("=== Remarksの削除/更新 ===");
+  console.log("結果:", txResult);
+
+  if (txResult === "tesSUCCESS") {
+    console.log("'ウェブ'のRemarkが削除されました。");
+    console.log("'名前'のRemarkが更新されました。");
+  } else if (txResult === "tecIMMUTABLE") {
+    console.log("変更不可：いずれかのRemarkにtfImmutableフラグが設定されています。");
+  }
+
+  await client.disconnect();
+}
+
+deleteRemark();`,
           },
         },
       ],
       slides: [
         {
-          title: { es: "SetRemarks", en: "SetRemarks", jp: "" },
+          title: { es: "SetRemarks", en: "SetRemarks", jp: "SetRemarks" },
           content: {
             es: "Metadata clave-valor en objetos del ledger\n\n• Adjunta Remarks a: AccountRoot, Offer,\n  Escrow, Check, URIToken, TrustLine...\n• RemarkName + RemarkValue (en hex)\n• Solo el propietario/emisor puede modificar\n• Máximo 32 Remarks por objeto\n\nNo es un mensaje: es metadata del objeto",
             en: "Key-value metadata on ledger objects\n\n• Attach Remarks to: AccountRoot, Offer,\n  Escrow, Check, URIToken, TrustLine...\n• RemarkName + RemarkValue (in hex)\n• Only the owner/issuer can modify\n• Maximum 32 Remarks per object\n\nNot a message: it is object metadata",
-            jp: "",
+            jp: "レジャーオブジェクトへのキーと値のメタデータ\n\n• Remarksの添付先：AccountRoot、Offer、\n  Escrow、Check、URIToken、TrustLine...\n• RemarkName + RemarkValue（16進数）\n• 所有者/発行者のみ変更可能\n• オブジェクトあたり最大32 Remarks\n\nメッセージではない：オブジェクトのメタデータです",
           },
           visual: "🏷️",
         },
         {
-          title: { es: "Crear, modificar y eliminar", en: "Create, modify and delete", jp: "" },
+          title: { es: "Crear, modificar y eliminar", en: "Create, modify and delete", jp: "作成、変更、削除" },
           content: {
             es: "Crear / actualizar:\n  → RemarkName + RemarkValue\n\nEliminar:\n  → Solo RemarkName, sin RemarkValue\n\nInmutable (tfImmutable = Flags: 1):\n  → No se puede modificar ni eliminar nunca\n\nFee extra: 1 drop por byte de nombre + valor",
             en: "Create / update:\n  → RemarkName + RemarkValue\n\nDelete:\n  → RemarkName only, no RemarkValue\n\nImmutable (tfImmutable = Flags: 1):\n  → Cannot be modified or deleted ever\n\nExtra fee: 1 drop per byte of name + value",
-            jp: "",
+            jp: "作成 / 更新：\n  → RemarkName + RemarkValue\n\n削除：\n  → RemarkNameのみ、RemarkValueなし\n\n不変（tfImmutable = Flags: 1）：\n  → 今後変更・削除不可\n\n追加fee：名前 + 値のバイトあたり1 drop",
           },
           visual: "✏️",
         },
         {
-          title: { es: "ObjectID: ¿qué objeto anotar?", en: "ObjectID: which object to annotate?", jp: "" },
+          title: { es: "ObjectID: ¿qué objeto anotar?", en: "ObjectID: which object to annotate?", jp: "ObjectID：どのオブジェクトに注釈するか？" },
           content: {
             es: "Cada objeto del ledger tiene un ID único:\n\n• AccountRoot → account_data.index\n• Escrow, Check, Offer → LedgerIndex\n  de los AffectedNodes al crear el objeto\n\nSetRemarks necesita ese ID para saber\na qué objeto adjuntar la metadata",
             en: "Each ledger object has a unique ID:\n\n• AccountRoot → account_data.index\n• Escrow, Check, Offer → LedgerIndex\n  from AffectedNodes when creating the object\n\nSetRemarks needs that ID to know\nwhich object to attach the metadata to",
-            jp: "",
+            jp: "各レジャーオブジェクトには一意のIDがあります：\n\n• AccountRoot → account_data.index\n• Escrow、Check、Offer → オブジェクト作成時の\n  AffectedNodesのLedgerIndex\n\nSetRemarksはそのIDを使用して\nどのオブジェクトにメタデータを\n添付するかを識別します",
           },
           visual: "🔍",
         },
@@ -1950,7 +2773,7 @@ deleteRemark();`,
       title: {
         es: "Remit: transacción multi-función",
         en: "Remit: Multi-function Transaction",
-        jp: "",
+        jp: "Remit：マルチ機能トランザクション",
       },
       theory: {
         es: `La transacción \`Remit\` es una operación exclusiva de Xahau que combina múltiples acciones en una sola transacción. Puede **activar cuentas**, **enviar pagos** (XAH o IOUs) y realizar **operaciones con URITokens** (transferir o mintear), todo de una vez. Además, **paga todos los fees** de activación de cuenta, TrustLines y reservas de URITokens.
@@ -2079,14 +2902,76 @@ All these costs are deducted from the sending account (\`Account\`), plus the st
 ### More information
 
 For a complete reference to \`Remit\`, including all fields and possible errors, see the [official documentation](https://xahau.network/docs/protocol-reference/transactions/transaction-types/remit/).`,
-        jp: "",
+        jp: `\`Remit\`トランザクションは、Xahau独自の操作で、単一のトランザクションに複数のアクションを組み合わせます。**アカウントの有効化**、**支払いの送信**（XAHまたはIOU）、**URIToken操作**（転送またはミント）をすべて一度に実行できます。また、アカウントの有効化、TrustLine、URITokenリザーブのための**すべてのfeeを支払います**。
+
+### なぜRemitを使うのか？
+
+複数の別々のトランザクション（アカウントの有効化、支払い、URITokenの転送）を送信する代わりに、\`Remit\`は単一のアトミックトランザクションでそれをすべて行います。時間とfeeを節約し、すべての操作が一緒に行われるかまったく行われないかを保証します。
+
+### Remitのフィールド
+
+| フィールド | 必須 | 説明 |
+|---|---|---|
+| \`Account\` | Yes | トランザクションを送信するアカウント |
+| \`Destination\` | Yes | 宛先アカウント |
+| \`Amounts\` | No | 支払いを含む最大**32**個の\`AmountEntry\`オブジェクトの配列 |
+| \`URITokenIDs\` | No | 転送する最大**32**個のURIToken IDの配列 |
+| \`MintURIToken\` | No | 宛先で直接新しいURITokenをミントするオブジェクト |
+| \`DestinationTag\` | No | 宛先の数値タグ |
+| \`Inform\` | No | トランザクションの通知を受けるHookを持つアカウント |
+| \`Blob\` | No | Hookが使用するための任意の16進数データ（最大128 KB） |
+| \`InvoiceID\` | No | トランザクションの理由を示す256ビットの識別子 |
+
+### AmountEntry
+
+\`Amounts\`配列の各エントリには、ネイティブXAH（drops文字列）またはIOU（\`currency\`、\`issuer\`、\`value\`を持つオブジェクト）の\`Amount\`フィールドが含まれます：
+
+\`\`\`
+"Amounts": [
+  { "AmountEntry": { "Amount": "50000000" } },              // 50 XAH
+  { "AmountEntry": { "Amount": {                             // 100 USD
+    "currency": "USD",
+    "issuer": "rTokenIssuer",
+    "value": "100"
+  }}}
+]
+\`\`\`
+
+配列内の同じ通貨の重複した金額は許可されません。
+
+### MintURIToken
+
+\`MintURIToken\`フィールドにより、宛先アカウントに直接割り当てられる新しいURITokenを作成できます：
+
+| フィールド | 説明 |
+|---|---|
+| \`URI\` | トークンURI（最大256バイト、16進数） |
+| \`Digest\` | （オプション）URIが指すコンテンツのハッシュ |
+| \`Flags\` | （オプション）\`1\`（\`tfBurnable\`）は発行者が後でトークンを焼却できるようにします |
+
+### URITokenの転送
+
+\`URITokenIDs\`を使用すると、単一のトランザクションで最大32個の既存URITokenを宛先に転送できます。URITokenは送信アカウントに属し、必要な権限を持っている必要があります。
+
+### feeとリザーブ
+
+Remitは各アクションに関連する追加コストを自動的に支払います：
+- **アカウントの有効化**：宛先アカウントが存在しない場合、ベースリザーブで有効化されます
+- **TrustLine**：IOUが送信され、宛先アカウントが新しいTrustLineを必要とする場合、作成されてリザーブがカバーされます
+- **URITokenリザーブ**：転送またはミントされたURITokenのリザーブが自動的にカバーされます
+
+これらのコストはすべて送信アカウント（\`Account\`）から差し引かれ、標準のトランザクションfeeに加算されます。
+
+### 詳細情報
+
+すべてのフィールドと考えられるエラーを含む\`Remit\`の完全なリファレンスは、[公式ドキュメント](https://xahau.network/docs/protocol-reference/transactions/transaction-types/remit/)を参照してください。`,
       },
       codeBlocks: [
         {
           title: {
             es: "Remit: pago + minteo de URIToken en una sola transacción",
             en: "Remit: payment + URIToken minting in a single transaction",
-            jp: "",
+            jp: "Remit：単一トランザクションでの支払い + URITokenのミント",
           },
           language: "javascript",
           code: {
@@ -2198,26 +3083,79 @@ async function sendRemit() {
 }
 
 sendRemit();`,
-            jp: "",
+            jp: `require("dotenv").config();
+const { Client, Wallet, xahToDrops } = require("xahau");
+
+function stringToHex(str) {
+  return Buffer.from(str, "utf8").toString("hex").toUpperCase();
+}
+
+async function sendRemit() {
+  const client = new Client("wss://xahau-test.net");
+  await client.connect();
+
+  const wallet = Wallet.fromSeed(process.env.WALLET_SEED, { algorithm: "secp256k1" });
+
+  // Remit: 25 XAHの送信 + 宛先にURITokenをミント
+  const remit = {
+    TransactionType: "Remit",
+    Account: wallet.address,
+    Destination: "rDestinationAddress",
+    // 25 XAHを送信
+    Amounts: [
+      {
+        AmountEntry: {
+          Amount: xahToDrops(25),
+        },
+      },
+    ],
+    // 宛先アカウントに直接URITokenをミント
+    MintURIToken: {
+      URI: stringToHex("ipfs://bafybeieza5w4rkes55paw7jgpo4kzsbyywhw7ildltk3kjx2ttkmt7texa/106.json"),
+      Digest: "A".repeat(64), // コンテンツのSHA-256ハッシュ（64 hex文字）
+      Flags: 1, // tfBurnable：発行者がトークンを焼却できる
+    },
+  };
+
+  const prepared = await client.autofill(remit);
+  const signed = wallet.sign(prepared);
+  const result = await client.submitAndWait(signed.tx_blob);
+
+  const txResult = result.result.meta.TransactionResult;
+  console.log("=== Remit ===");
+  console.log("結果:", txResult);
+  console.log("Hash:", signed.hash);
+
+  if (txResult === "tesSUCCESS") {
+    console.log("単一のトランザクションで：");
+    console.log("- 25 XAHが宛先に送信されました");
+    console.log("- URITokenが宛先アカウントに直接ミントされました");
+    console.log("- リザーブfeeが自動的にカバーされました");
+  }
+
+  await client.disconnect();
+}
+
+sendRemit();`,
           },
         },
       ],
       slides: [
         {
-          title: { es: "Remit — Transacción multi-función", en: "Remit — Multi-function Transaction", jp: "" },
+          title: { es: "Remit — Transacción multi-función", en: "Remit — Multi-function Transaction", jp: "Remit — マルチ機能トランザクション" },
           content: {
             es: "Una transacción para todo:\n\n• Activar cuentas nuevas\n• Enviar hasta 32 pagos (XAH + IOUs)\n• Transferir hasta 32 URITokens\n• Mintear un URIToken en el destino\n\nTodo atómico: ocurre junto o no ocurre",
             en: "One transaction for everything:\n\n• Activate new accounts\n• Send up to 32 payments (XAH + IOUs)\n• Transfer up to 32 URITokens\n• Mint a URIToken at the destination\n\nAll atomic: happens together or not at all",
-            jp: "",
+            jp: "あらゆることを1つのトランザクションで：\n\n• 新しいアカウントを有効化\n• 最大32件の支払いを送信（XAH + IOU）\n• 最大32個のURITokenを転送\n• 宛先でURITokenをミント\n\nすべてアトミック：一緒に行われるかまったく行われないか",
           },
           visual: "📦",
         },
         {
-          title: { es: "Remit paga las reservas", en: "Remit pays the reserves", jp: "" },
+          title: { es: "Remit paga las reservas", en: "Remit pays the reserves", jp: "Remitはリザーブを支払う" },
           content: {
             es: "El emisor cubre todos los costes:\n\n• Activación de cuenta destino\n• Creación de TrustLines necesarias\n• Reservas de URITokens\n• Fee estándar de la transacción\n\nAhorra fees y garantiza atomicidad\nvs múltiples transacciones separadas",
             en: "The sender covers all costs:\n\n• Destination account activation\n• Creation of required TrustLines\n• URIToken reserves\n• Standard transaction fee\n\nSaves fees and guarantees atomicity\nvs multiple separate transactions",
-            jp: "",
+            jp: "送信者がすべてのコストをカバー：\n\n• 宛先アカウントの有効化\n• 必要なTrustLineの作成\n• URITokenのリザーブ\n• 標準トランザクションfee\n\n複数の別々のトランザクションと比較して\nfeeを節約しアトミック性を保証",
           },
           visual: "💸",
         },
@@ -2228,7 +3166,7 @@ sendRemit();`,
       title: {
         es: "CronSet: ejecución automática de Hooks",
         en: "CronSet: Automatic Hook Execution",
-        jp: "",
+        jp: "CronSet：Hooksの自動実行",
       },
       theory: {
         es: `La transacción \`CronSet\` permite programar la **ejecución automática y periódica** de un Hook directamente desde el protocolo de Xahau, sin depender de ningún servicio externo. Es el mecanismo nativo de cron jobs de la red.
@@ -2401,14 +3339,98 @@ const cronDelete = {
 | \`temMALFORMED\` | Invalid field combination (e.g. only one of \`DelaySeconds\`/\`RepeatCount\`) |
 | \`tecEXPIRED\` | \`StartTime\` in the past or more than 365 days into the future |
 | \`tefBAD_LEDGER\` | The Cron object being deleted does not exist |`,
-        jp: "",
+        jp: `\`CronSet\`トランザクションは、外部サービスに依存することなく、Xahauプロトコルから直接、Hookの**自動かつ定期的な実行**をスケジュールできます。これはネットワークのネイティブなcronジョブメカニズムです。
+
+### CronSetとは？
+
+\`CronSet\`を使用すると、Xahauにアカウントのフックを定期的に実行するよう指示できます：X秒ごと、特定の日付から、特定の回数。すべてがレジャーに記録され、ネットワークが実行を担当します。
+
+定期的な\`Invoke\`パターン（外部サービスがトランザクションを送信する場合）とは異なり、\`CronSet\`は**完全にオンチェーン**です：常時実行されている外部スクリプトは不要です。
+
+### 前提条件
+
+\`CronSet\`を使用する前に、2つのステップでHookを持つアカウントを準備する必要があります：
+
+1. **\`hsfCOLLECT\`フラグ付きのHookをインストール**：このフラグはHookがネットワークのcronシステムによって自動的に呼び出されるように設計されていることを示します。
+
+2. **アカウントでTSH Collectを有効化**（\`asfTshCollect\`、\`SetFlag: 11\`）：ネットワークがTransaction Signature Hook Collectionメカニズムを介してHookを実行できるようにします。
+
+\`\`\`javascript
+// TSH Collectを有効化
+const accountSet = {
+  TransactionType: "AccountSet",
+  Account: wallet.address,
+  SetFlag: 11, // asfTshCollect
+};
+\`\`\`
+
+### CronSetのフィールド
+
+| フィールド | タイプ | 必須 | 説明 |
+|---|---|---|---|
+| \`TransactionType\` | String | Yes | \`"CronSet"\` |
+| \`Account\` | String | Yes | Hookが定期的に実行されるアカウント |
+| \`StartTime\` | Number | No | 最初のトリガーのRipple Epoch。即時実行には\`0\`を使用。削除時は省略 |
+| \`RepeatCount\` | Number | No | Hookが実行される回数（トランザクションあたり最大256回）。削除時は省略 |
+| \`DelaySeconds\` | Number | No | 各実行間の秒数。削除時は省略 |
+
+**重要なルール**：
+- \`DelaySeconds\`と\`RepeatCount\`は両方存在するか、両方ないかでなければなりません
+- アクティブなcronを削除するには：すべてのスケジューリングフィールドを省略して\`Flags: 1\`（\`tfCronUnset\`）を追加
+- \`tfCronUnset\`とスケジューリングフィールドを組み合わせることはできません
+
+### Ripple Epochの時刻
+
+XahauはUnixタイムスタンプではなく**Ripple Epoch**（2000年1月1日 UTC からの秒数）を使用します：
+
+\`\`\`javascript
+// 現在の日付をRipple Epochに変換
+const rippleEpoch = Math.floor(Date.now() / 1000) - 946684800;
+
+// 1時間後にスケジュール
+const startIn1Hour = rippleEpoch + 3600;
+\`\`\`
+
+\`StartTime\`に\`0\`を使用すると、次の有効なレジャーからcronの実行が開始されます。
+
+### 制限と制約
+
+| パラメーター | 制限 |
+|---|---|
+| トランザクションあたりの最大\`RepeatCount\` | 256 |
+| 最大\`DelaySeconds\` | 31,536,000秒（365日） |
+| \`StartTime\`の最大未来設定 | 365日 |
+| 過去の\`StartTime\` | 不可（\`tecEXPIRED\`） |
+
+256回以上の繰り返しが必要な場合は、カウンターが切れる前に別の\`CronSet\`を送信して延長してください。
+
+### CronSetの削除
+
+アクティブなcronをキャンセルするには、\`Flags: 1\`を付けて\`CronSet\`を送信します：
+
+\`\`\`javascript
+const cronDelete = {
+  TransactionType: "CronSet",
+  Account: wallet.address,
+  Flags: 1, // tfCronUnset — アクティブなcronを削除
+};
+\`\`\`
+
+### よくあるエラー
+
+| エラー | 原因 |
+|---|---|
+| \`temDISABLED\` | CronSet機能がネットワークで有効になっていない |
+| \`temMALFORMED\` | 無効なフィールドの組み合わせ（例：\`DelaySeconds\`/\`RepeatCount\`のどちらか一方のみ） |
+| \`tecEXPIRED\` | \`StartTime\`が過去または365日以上先 |
+| \`tefBAD_LEDGER\` | 削除しようとしているCronオブジェクトが存在しない |`,
       },
       codeBlocks: [
         {
           title: {
             es: "Activar TSH Collect y programar un CronSet",
             en: "Enable TSH Collect and schedule a CronSet",
-            jp: "",
+            jp: "TSH Collectを有効化してCronSetをスケジュールする",
           },
           language: "javascript",
           code: {
@@ -2544,14 +3566,79 @@ async function setupCron() {
 }
 
 setupCron();`,
-            jp: "",
+            jp: `require("dotenv").config();
+const { Client, Wallet } = require("xahau");
+
+async function setupCron() {
+  const client = new Client("wss://xahau-test.net");
+  await client.connect();
+
+  const wallet = Wallet.fromSeed(process.env.WALLET_SEED, { algorithm: "secp256k1" });
+
+  console.log("アカウント:", wallet.address);
+
+  // === ステップ1: アカウントでTSH Collectを有効化 ===
+  // ネットワークがHookを自動的に実行できるようにするために必要
+  console.log("=== ステップ1: TSH Collectを有効化（asfTshCollect）===");
+
+  const accountSet = {
+    TransactionType: "AccountSet",
+    Account: wallet.address,
+    SetFlag: 11, // asfTshCollect
+  };
+
+  const prepAccountSet = await client.autofill(accountSet);
+  const signedAccountSet = wallet.sign(prepAccountSet);
+  const resultAccountSet = await client.submitAndWait(signedAccountSet.tx_blob);
+
+  console.log("AccountSet結果:", resultAccountSet.result.meta.TransactionResult);
+
+  if (resultAccountSet.result.meta.TransactionResult !== "tesSUCCESS") {
+    console.log("TSH Collectの有効化エラー。");
+    await client.disconnect();
+    return;
+  }
+
+  // === ステップ2: CronSetを作成 ===
+  // このステップの前にhsfCOLLECTフラグ付きでHookをインストールしておく必要があります
+  console.log("=== ステップ2: CronSetを作成 ===");
+
+  // Ripple Epoch: 2000年01月01日00:00:00 UTCからの秒数
+  const RIPPLE_EPOCH_OFFSET = 946684800;
+
+  const cronSet = {
+    TransactionType: "CronSet",
+    Account: wallet.address,
+    StartTime: 0,       // 0 = 次の有効なレジャーから開始
+    DelaySeconds: 3600, // 1時間ごとに実行（3600秒）
+    RepeatCount: 24,    // 合計24回実行（= 24時間）
+  };
+
+  const prepCron = await client.autofill(cronSet);
+  const signedCron = wallet.sign(prepCron);
+  const resultCron = await client.submitAndWait(signedCron.tx_blob);
+
+  const txResult = resultCron.result.meta.TransactionResult;
+  console.log("CronSet結果:", txResult);
+  console.log("Hash:", signedCron.hash);
+
+  if (txResult === "tesSUCCESS") {
+    console.log("CronSetが正常に作成されました！");
+    console.log("Hookは24時間、1時間ごとに自動的に実行されます。");
+    console.log("HookがhsfCOLLECTフラグ付きでインストールされていることを確認してください。");
+  }
+
+  await client.disconnect();
+}
+
+setupCron();`,
           },
         },
         {
           title: {
             es: "Eliminar un CronSet activo",
             en: "Delete an active CronSet",
-            jp: "",
+            jp: "アクティブなCronSetを削除する",
           },
           language: "javascript",
           code: {
@@ -2631,35 +3718,72 @@ async function deleteCron() {
 }
 
 deleteCron();`,
-            jp: "",
+            jp: `require("dotenv").config();
+const { Client, Wallet } = require("xahau");
+
+async function deleteCron() {
+  const client = new Client("wss://xahau-test.net");
+  await client.connect();
+
+  const wallet = Wallet.fromSeed(process.env.WALLET_SEED, { algorithm: "secp256k1" });
+
+  console.log("=== アクティブなCronSetの削除 ===");
+  console.log("アカウント:", wallet.address);
+
+  // cronを削除：すべてのスケジューリングフィールドを省略
+  // Flags: 1（tfCronUnset）を追加
+  const cronDelete = {
+    TransactionType: "CronSet",
+    Account: wallet.address,
+    Flags: 1, // tfCronUnset — アクティブなcronを削除
+  };
+
+  const prepared = await client.autofill(cronDelete);
+  const signed = wallet.sign(prepared);
+  const result = await client.submitAndWait(signed.tx_blob);
+
+  const txResult = result.result.meta.TransactionResult;
+  console.log("結果:", txResult);
+  console.log("Hash:", signed.hash);
+
+  if (txResult === "tesSUCCESS") {
+    console.log("CronSetが削除されました。Hookは自動的に実行されなくなります。");
+  } else if (txResult === "tefBAD_LEDGER") {
+    console.log("このアカウントにアクティブなCronSetが見つかりません。");
+  }
+
+  await client.disconnect();
+}
+
+deleteCron();`,
           },
         },
       ],
       slides: [
         {
-          title: { es: "¿Qué es CronSet?", en: "What is CronSet?", jp: "" },
+          title: { es: "¿Qué es CronSet?", en: "What is CronSet?", jp: "CronSetとは？" },
           content: {
             es: "Ejecución periódica de Hooks on-chain\n\n• Sin servicios externos\n• StartTime: cuándo empieza\n• DelaySeconds: cada cuánto\n• RepeatCount: cuántas veces (máx 256)\n\nRequiere Hook con hsfCOLLECT + TSH Collect activo",
             en: "Periodic on-chain Hook execution\n\n• No external services\n• StartTime: when it starts\n• DelaySeconds: how often\n• RepeatCount: how many times (max 256)\n\nRequires Hook with hsfCOLLECT + TSH Collect enabled",
-            jp: "",
+            jp: "オンチェーンでのHookの定期実行\n\n• 外部サービス不要\n• StartTime：いつ開始するか\n• DelaySeconds：どのくらいの間隔で\n• RepeatCount：何回（最大256）\n\nhsfCOLLECT付きのHook + TSH Collect有効化が必要",
           },
           visual: "⏱️",
         },
         {
-          title: { es: "Configurar CronSet", en: "Setting up CronSet", jp: "" },
+          title: { es: "Configurar CronSet", en: "Setting up CronSet", jp: "CronSetの設定" },
           content: {
             es: "Pasos:\n1. Instalar Hook con flag hsfCOLLECT\n2. AccountSet SetFlag: 11 (asfTshCollect)\n3. Enviar CronSet con:\n   • StartTime: 0 (inmediato) o Ripple Epoch\n   • DelaySeconds: intervalo en segundos\n   • RepeatCount: nº de ejecuciones\n\nEliminar: CronSet con Flags: 1 (tfCronUnset)",
             en: "Steps:\n1. Install Hook with hsfCOLLECT flag\n2. AccountSet SetFlag: 11 (asfTshCollect)\n3. Send CronSet with:\n   • StartTime: 0 (immediate) or Ripple Epoch\n   • DelaySeconds: interval in seconds\n   • RepeatCount: number of executions\n\nDelete: CronSet with Flags: 1 (tfCronUnset)",
-            jp: "",
+            jp: "手順：\n1. hsfCOLLECTフラグ付きでHookをインストール\n2. AccountSet SetFlag: 11（asfTshCollect）\n3. CronSetを送信：\n   • StartTime: 0（即時）またはRipple Epoch\n   • DelaySeconds: 秒単位の間隔\n   • RepeatCount: 実行回数\n\n削除：Flags: 1（tfCronUnset）付きのCronSet",
           },
           visual: "🔧",
         },
         {
-          title: { es: "Invoke vs CronSet", en: "Invoke vs CronSet", jp: "" },
+          title: { es: "Invoke vs CronSet", en: "Invoke vs CronSet", jp: "Invoke vs CronSet" },
           content: {
             es: "Invoke periódico:\n• Trigger externo (script, servidor)\n• Flexible, cualquier intervalo\n• Depende de un servicio activo\n\nCronSet:\n• Completamente on-chain\n• Sin infraestructura extra\n• Máx 256 repeticiones por tx\n• Límite: DelaySeconds ≤ 365 días\n\nCronSet = autonomía total del Hook",
             en: "Periodic Invoke:\n• External trigger (script, server)\n• Flexible, any interval\n• Depends on an active service\n\nCronSet:\n• Fully on-chain\n• No extra infrastructure\n• Max 256 repetitions per tx\n• Limit: DelaySeconds ≤ 365 days\n\nCronSet = full Hook autonomy",
-            jp: "",
+            jp: "定期的なInvoke：\n• 外部トリガー（スクリプト、サーバー）\n• 柔軟、任意の間隔\n• アクティブなサービスに依存\n\nCronSet：\n• 完全にオンチェーン\n• 追加インフラ不要\n• 1txあたり最大256回の繰り返し\n• 制限：DelaySeconds ≤ 365日\n\nCronSet = Hookの完全な自律性",
           },
           visual: "⚖️",
         },

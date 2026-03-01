@@ -4,7 +4,7 @@ export default {
   title: {
     es: "Creación y gestión de tokens propios",
     en: "Creating and managing your own tokens",
-    jp: "",
+    jp: "独自トークンの作成と管理",
   },
   lessons: [
     {
@@ -12,7 +12,7 @@ export default {
       title: {
         es: "TrustLines y el modelo de tokens en Xahau",
         en: "TrustLines and the token model in Xahau",
-        jp: "",
+        jp: "TrustLineとXahauのトークンモデル",
       },
       theory: {
         es: `En Xahau, los tokens fungibles funcionan de manera diferente a ERC-20 en Ethereum. No necesitas desplegar un smart contract para crear un token. En su lugar, se usa un sistema basado en **TrustLines** (líneas de confianza).
@@ -107,14 +107,59 @@ One of the advantages of Xahau's token system is that the issuing account can co
 **Important**: Some configurations are irreversible (\`NoFreeze\`) and others must be activated before issuing tokens (\`Clawback\`). Plan your issuer's configuration carefully before you start distributing tokens.
 
 We will cover each of these configurations in detail in the following sections of this module.`,
-        jp: "",
+        jp: `XahauのFungibleトークンは、EthereumのERC-20とは異なる仕組みで動作します。トークンを作成するためにスマートコントラクトをデプロイする必要はありません。代わりに、**TrustLine**（信頼ライン）に基づくシステムが使用されます。
+
+### 仕組み
+
+1. **発行者（Issuer）**: どのアカウントもトークンを発行できます。発行アカウントはそのトークンの「中央銀行」となります
+2. **TrustLine**: トークンを受け取るには、受取人が先に発行者への**TrustLine**を作成する必要があります。これは「このアカウントをこのトークンのX量まで信頼する」と宣言するようなものです
+3. **転送**: TrustLineが存在すれば、発行者はPaymentトランザクションで受取人にトークンを送ることができます
+
+### トークンの識別
+
+各トークンは2つのフィールドで識別されます：
+- **currency**: 3文字のコード（例："USD"、"EUR"）または長い名前用の40文字の16進数コード
+- **issuer**: 発行アカウントのアドレス
+
+同じ\`currency\`でも\`issuer\`が異なれば、それは**まったく別のトークン**です。
+
+### TrustLine vs ERC-20
+
+| 特徴 | ERC-20 (Ethereum) | TrustLine (Xahau) |
+|---|---|---|
+| トークン作成 | Solidityコントラクトのデプロイ | アカウントから直接発行 |
+| トークン受取 | 自動（許可不要） | TrustLineの作成が必要（オプトイン） |
+| 数量制限 | コントラクトで定義 | 受取人がTrustLineで定義 |
+| 転送 | コントラクト関数 | ネイティブPaymentトランザクション |
+| コスト | 高価なガス代 | 最小限のFee（〜12 drops） |
+
+### アカウントリザーブ
+
+各TrustLineはアカウントの**オーナーリザーブ**を消費します。つまり、作成するTrustLineごとに追加のXAHをロックしておく必要があります。
+
+### トークン作成時の発行者設定
+
+Xahauのトークンシステムの利点の一つは、発行アカウントがトークン発行**前後**に\`AccountSet\`トランザクションを使って様々なプロパティを設定できることです。これらの設定はネットワーク上でのトークンの動作を定義します：
+
+| 設定 | Flag / フィールド | 説明 |
+|---|---|---|
+| **DefaultRipple** | \`SetFlag: 8\` | 第三者間でトークンを自由に転送できるようにします。このフラグなしでは、トークンは発行者との間でしか移動できません |
+| **TransferFee** | \`TransferRate\` | 第三者間の転送ごとに割合（例：0.1%）を徴収します。フィーは発行者に入ります |
+| **RequireAuth** | \`SetFlag: 2\` | ホルダーがトークンを受け取れるようにする前に、発行者が各TrustLineを承認する必要があります。KYCトークンに最適 |
+| **Freeze** | \`SetFlag: 7\`（グローバル） | 個別またはすべてのTrustLineを凍結して転送を防ぐことができます |
+| **NoFreeze** | \`SetFlag: 6\` | 凍結能力の**恒久的**かつ取り消し不能な放棄。信頼のシグナル |
+| **Clawback** | \`SetFlag: 17\` | 発行者がどのホルダーからもトークンを回収できるようにします。TrustLineを作成する**前**に有効化が必要 |
+
+**重要**: 一部の設定は取り消し不能（\`NoFreeze\`）で、他はトークン発行前に有効化する必要があります（\`Clawback\`）。トークンの配布を開始する前に、発行者の設定を慎重に計画してください。
+
+これらの設定の詳細は、このモジュールの以降のセクションで説明します。`,
       },
       codeBlocks: [
         {
           title: {
             es: "Crear una TrustLine hacia un emisor de tokens",
             en: "Create a TrustLine toward a token issuer",
-            jp: "",
+            jp: "トークン発行者へのTrustLineを作成する",
           },
           language: "javascript",
           code: {
@@ -190,14 +235,49 @@ async function createTrustLine() {
 }
 
 createTrustLine();`,
-            jp: "",
+            jp: `require("dotenv").config();
+const { Client, Wallet } = require("xahau");
+
+async function createTrustLine() {
+  const client = new Client("wss://xahau-test.net");
+  await client.connect();
+
+  // 受取人のウォレット（トークンを受け取りたい人）
+  const receiver = Wallet.fromSeed(process.env.WALLET_SEED, {algorithm: 'secp256k1'});
+
+  // TrustLineを作成：「発行者を最大1,000,000まで信頼する」
+  const trustSet = {
+    TransactionType: "TrustSet",
+    Account: receiver.address,
+    LimitAmount: {
+      currency: "YourTokenName",
+      issuer: "YourIssuerAddress",
+      value: "1000000", // 受け入れる最大限度額
+    },
+  };
+
+  const prepared = await client.autofill(trustSet);
+  const signed = receiver.sign(prepared);
+  const result = await client.submitAndWait(signed.tx_blob);
+
+  console.log("結果:", result.result.meta.TransactionResult);
+
+  if (result.result.meta.TransactionResult === "tesSUCCESS") {
+    console.log("TrustLineを正常に作成しました！");
+    console.log("あなたのアカウント "+ receiver.address + " から発行者のトークンを受け取れるようになりました");
+  }
+
+  await client.disconnect();
+}
+
+createTrustLine();`,
           },
         },
         {
           title: {
             es: "Emitir (enviar) tokens a una cuenta con TrustLine",
             en: "Issue (send) tokens to an account with a TrustLine",
-            jp: "",
+            jp: "TrustLineを持つアカウントへトークンを発行（送信）する",
           },
           language: "javascript",
           code: {
@@ -275,35 +355,71 @@ async function issueTokens() {
 }
 
 issueTokens();`,
-            jp: "",
+            jp: `//このコードは、対象のトークンを所持していない場合は失敗します
+require("dotenv").config();
+const { Client, Wallet } = require("xahau");
+
+async function issueTokens() {
+  const client = new Client("wss://xahau-test.net");
+  await client.connect();
+
+  // トークン発行者のウォレット
+  const issuer = Wallet.fromSeed(process.env.WALLET_SEED, {algorithm: 'secp256k1'});
+
+  // 受取人（すでにTrustLineを持っている）に100 USDを送信
+  const payment = {
+    TransactionType: "Payment",
+    Account: issuer.address,
+    Destination: "rRecipientAddress",
+    Amount: {
+      currency: "USD",
+      issuer: issuer.address,
+      value: "100", // 100 USD
+    },
+  };
+
+  const prepared = await client.autofill(payment);
+  const signed = issuer.sign(prepared);
+  const result = await client.submitAndWait(signed.tx_blob);
+
+  console.log("結果:", result.result.meta.TransactionResult);
+
+  if (result.result.meta.TransactionResult === "tesSUCCESS") {
+    console.log("トークンを正常に発行しました！");
+  }
+
+  await client.disconnect();
+}
+
+issueTokens();`,
           },
         },
       ],
       slides: [
         {
-          title: { es: "Modelo de tokens en Xahau", en: "Token model in Xahau", jp: "" },
+          title: { es: "Modelo de tokens en Xahau", en: "Token model in Xahau", jp: "Xahauのトークンモデル" },
           content: {
             es: "No necesitas smart contracts para crear tokens\n\n1️⃣ Emisor: Cualquier cuenta\n2️⃣ TrustLine: El receptor opta-in\n3️⃣ Payment: Transferencia nativa\n\nTokens = currency + issuer",
             en: "No smart contracts needed to create tokens\n\n1️⃣ Issuer: Any account\n2️⃣ TrustLine: Recipient opts-in\n3️⃣ Payment: Native transfer\n\nTokens = currency + issuer",
-            jp: "",
+            jp: "トークン作成にスマートコントラクト不要\n\n1️⃣ 発行者：どのアカウントでも可\n2️⃣ TrustLine：受取人がオプトイン\n3️⃣ Payment：ネイティブ転送\n\nトークン = currency + issuer",
           },
           visual: "🪙",
         },
         {
-          title: { es: "TrustLine = Opt-in", en: "TrustLine = Opt-in", jp: "" },
+          title: { es: "TrustLine = Opt-in", en: "TrustLine = Opt-in", jp: "TrustLine = オプトイン" },
           content: {
             es: "El receptor ELIGE recibir un token\n\n• Crea una TrustLine hacia el emisor\n• Define el límite máximo\n• Consume reserva de propietario\n• Protege contra spam de tokens",
             en: "The recipient CHOOSES to receive a token\n\n• Creates a TrustLine toward the issuer\n• Defines the maximum limit\n• Consumes owner reserve\n• Protects against token spam",
-            jp: "",
+            jp: "受取人がトークンを受け取ることを選択する\n\n• 発行者へのTrustLineを作成\n• 最大限度額を定義\n• オーナーリザーブを消費\n• トークンスパムから保護",
           },
           visual: "🤝",
         },
         {
-          title: { es: "Sistema de reservas", en: "Reserve system", jp: "" },
+          title: { es: "Sistema de reservas", en: "Reserve system", jp: "リザーブシステム" },
           content: {
             es: "Cada TrustLine aumenta la reserva de la cuenta\n\n• Reserva base + reserva por objeto\n• Más TrustLines = más XAH bloqueado\n• Los usuarios deben planificar sus TrustLines\n• Eliminar TrustLine (balance 0) libera reserva\n• Impacto directo en el XAH disponible",
             en: "Each TrustLine increases the account reserve\n\n• Base reserve + per-object reserve\n• More TrustLines = more XAH locked\n• Users must plan their TrustLines\n• Removing a TrustLine (balance 0) frees reserve\n• Direct impact on available XAH",
-            jp: "",
+            jp: "各TrustLineはアカウントリザーブを増やします\n\n• ベースリザーブ＋オブジェクトごとのリザーブ\n• TrustLineが多いほどXAHがロックされる\n• ユーザーはTrustLineを計画的に\n• TrustLine削除（残高0）でリザーブが解放\n• 利用可能XAHへの直接影響",
           },
           visual: "💎",
         },
@@ -314,7 +430,7 @@ issueTokens();`,
       title: {
         es: "Proceso completo: crear y distribuir tu propio token",
         en: "Complete process: create and distribute your own token",
-        jp: "",
+        jp: "完全なプロセス：独自トークンの作成と配布",
       },
       theory: {
         es: `Ahora que entiendes cómo funcionan las TrustLines, vamos a ver el proceso completo para crear tu propio token y distribuirlo. A diferencia de otras blockchains, en Xahau **no necesitas desplegar ningún contrato**. El proceso se realiza enteramente con transacciones nativas.
@@ -411,14 +527,60 @@ console.log(currencyToHex("EURZ"));
 | Create TrustLine | \`TrustSet\` | Reserve account |
 | Issue supply | \`Payment\` (Amount as IOU) | Issuer |
 | Distribute | \`Payment\` (Amount as IOU) | Reserve account |`,
-        jp: "",
+        jp: `TrustLineの仕組みを理解したところで、独自トークンを作成して配布するための完全なプロセスを見ていきましょう。他のブロックチェーンとは異なり、Xahauでは**コントラクトをデプロイする必要はありません**。プロセスはすべてネイティブトランザクションで行われます。
+
+### プロセスの概要
+
+トークンを作成して配布するための完全なフローは以下の通りです：
+
+1. **発行アカウントの準備**: トークン発行専用のアカウントを作成（または使用）する
+2. **発行者フラグの設定**: 第三者間でトークンが転送できるよう\`DefaultRipple\`を有効化する
+3. **リザーブ/配布アカウントの準備**: 初期サプライを受け取り、トークンを配布するための2つ目のアカウントを作成（または使用）する
+4. **リザーブアカウントからTrustLineを作成**: 配布アカウントが発行者へのTrustLineを作成する
+5. **トークンの発行**: 発行者がPaymentトランザクションでリザーブアカウントに全サプライを送信する
+6. **配布**: リザーブアカウントからエンドユーザーにトークンを配布する（ユーザーはあらかじめTrustLineを持っている必要がある）
+
+### なぜ2つのアカウントを分けるのか？
+
+**発行アカウント**と**配布アカウント**を分けることはベストプラクティスです：
+
+- **発行アカウント**: トークンの発行と設定（freeze、clawbackなど）にのみ使用。マルチサインで保護したり、設定完了後にマスターキーを無効化することができる
+- **配布/リザーブアカウント**: 流通サプライを保持し、日常業務（DEXでの販売、ユーザーへの配布など）に使用する
+
+この分離によりリスクが低減されます：配布アカウントが侵害された場合、発行者がトークンを凍結できます。すべてが1つのアカウントにある場合、侵害により発行と配布の両方が危険にさらされます。
+
+### 通貨コード：3文字 vs 16進数
+
+- **3文字**の名前のトークン（例：\`USD\`、\`EUR\`、\`EKI\`）はそのまま使用できる
+- **より長い**名前のトークン（例：\`EURZ\`、\`MyToken\`）は40文字の16進数コードに変換する必要がある
+
+\`\`\`
+// 長い名前を40文字の16進数に変換する関数
+function currencyToHex(name) {
+  const hex = Buffer.from(name, "ascii").toString("hex").toUpperCase();
+  return hex.padEnd(40, "0");
+}
+
+console.log(currencyToHex("EURZ"));
+
+// "EURZ" -> "4555525A00000000000000000000000000000000"
+\`\`\`
+
+### 必要なトランザクションのまとめ
+
+| ステップ | トランザクション | 実行アカウント |
+|---|---|---|
+| 発行者を設定 | \`AccountSet\` (SetFlag: 8) | 発行者 |
+| TrustLineを作成 | \`TrustSet\` | リザーブアカウント |
+| サプライを発行 | \`Payment\`（IOUとしてAmount） | 発行者 |
+| 配布 | \`Payment\`（IOUとしてAmount） | リザーブアカウント |`,
       },
       codeBlocks: [
         {
           title: {
             es: "Proceso completo: configurar emisor, crear TrustLine, emitir y distribuir token",
             en: "Complete process: configure issuer, create TrustLine, issue and distribute token",
-            jp: "",
+            jp: "完全なプロセス：発行者の設定、TrustLineの作成、トークンの発行と配布",
           },
           language: "javascript",
           code: {
@@ -732,35 +894,189 @@ async function createAndDistributeToken() {
 }
 
 createAndDistributeToken();`,
-            jp: "",
+            jp: `require("dotenv").config();
+const { Client, Wallet, xahToDrops } = require("xahau");
+
+// テストネットで資金のある2つのウォレットが必要です。.envに定義してください：
+//   ISSUER_SEED  → トークン発行者アカウント
+//   RESERVE_SEED  → リザーブ/配布アカウント
+// ファウセットから資金を取得できます: https://xahau-test.net
+
+// token_currencyが3文字超の場合、40文字のhex（右側0埋め）に変換
+function normalizeCurrency(token_currency) {
+  if (typeof token_currency !== "string") return token_currency;
+
+  const cur = token_currency.trim();
+
+  // 3文字以下：標準通貨コード
+  if (cur.length <= 3) return cur;
+
+  // 3文字超：hexに変換して40文字（20バイト）に右側0埋め
+  const hex = Buffer.from(cur, "utf8").toString("hex").toUpperCase();
+
+  if (hex.length > 40) {
+    throw new Error(
+      \`token_currencyが長すぎます: "\${cur}" -> hex \${hex.length} (>40). 最大〜20バイト（UTF-8）.\`
+    );
+  }
+
+  return hex.padEnd(40, "0");
+}
+
+async function createAndDistributeToken() {
+  const client = new Client("wss://xahau-test.net");
+  await client.connect();
+
+  // === アカウント ===
+  const issuer = Wallet.fromSeed(process.env.ISSUER_SEED, {algorithm: 'secp256k1'});
+  const reserve = Wallet.fromSeed(process.env.RESERVE_SEED, {algorithm: 'secp256k1'});
+
+  const TOKEN_CURRENCY_INPUT = "YourTokenName";          // トークン名（3文字）または長い名前用の40文字hex
+  const TOTAL_SUPPLY = "1000000";        // 発行する総供給量
+
+  const TOKEN_CURRENCY = normalizeCurrency(TOKEN_CURRENCY_INPUT);
+
+
+  console.log("=== トークン作成 ===");
+  console.log("発行者:", issuer.address);
+  console.log("リザーブ:", reserve.address);
+  console.log("トークン:", TOKEN_CURRENCY);
+  console.log("供給量:", TOTAL_SUPPLY);
+
+  // === ステップ1：発行者アカウントにDefaultRippleを設定 ===
+  console.log("--- ステップ1：発行者にDefaultRippleを設定 ---");
+  const accountSet = {
+    TransactionType: "AccountSet",
+    Account: issuer.address,
+    SetFlag: 8, // asfDefaultRipple
+  };
+
+  const prep1 = await client.autofill(accountSet);
+  const signed1 = issuer.sign(prep1);
+  const result1 = await client.submitAndWait(signed1.tx_blob);
+  console.log("DefaultRipple:", result1.result.meta.TransactionResult);
+
+  if (result1.result.meta.TransactionResult !== "tesSUCCESS") {
+    console.log("発行者の設定エラー。中止します。");
+    await client.disconnect();
+    return;
+  }
+
+  // === ステップ2：リザーブアカウントが発行者へTrustLineを作成 ===
+  console.log("--- ステップ2：TrustLineを作成（リザーブ → 発行者）---");
+  const trustSet = {
+    TransactionType: "TrustSet",
+    Account: reserve.address,
+    LimitAmount: {
+      currency: TOKEN_CURRENCY,
+      issuer: issuer.address,
+      value: TOTAL_SUPPLY, // 総供給量まで受け入れる
+    },
+  };
+
+  const prep2 = await client.autofill(trustSet);
+  const signed2 = reserve.sign(prep2);
+  const result2 = await client.submitAndWait(signed2.tx_blob);
+  console.log("TrustLine:", result2.result.meta.TransactionResult);
+
+  if (result2.result.meta.TransactionResult !== "tesSUCCESS") {
+    console.log("TrustLine作成エラー。中止します。");
+    await client.disconnect();
+    return;
+  }
+
+  // === ステップ3：発行者がリザーブアカウントに全サプライを送信 ===
+  console.log("--- ステップ3：トークンを発行（発行者 → リザーブ）---");
+  const issuePayment = {
+    TransactionType: "Payment",
+    Account: issuer.address,
+    Destination: reserve.address,
+    Amount: {
+      currency: TOKEN_CURRENCY,
+      issuer: issuer.address,
+      value: TOTAL_SUPPLY,
+    },
+  };
+
+  const prep3 = await client.autofill(issuePayment);
+  const signed3 = issuer.sign(prep3);
+  const result3 = await client.submitAndWait(signed3.tx_blob);
+  console.log("発行:", result3.result.meta.TransactionResult);
+
+  if (result3.result.meta.TransactionResult !== "tesSUCCESS") {
+    console.log("トークン発行エラー。中止します。");
+    await client.disconnect();
+    return;
+  }
+
+  console.log("トークンを作成してリザーブアカウントに配布しました！");
+  console.log("総供給量:", TOTAL_SUPPLY, TOKEN_CURRENCY);
+
+  // === 確認：リザーブアカウントの残高を照会 ===
+  console.log("--- 確認 ---");
+  const lines = await client.request({
+    command: "account_lines",
+    account: reserve.address,
+    ledger_index: "validated",
+  });
+
+  const tokenLine = lines.result.lines.find(
+    (l) => l.currency === TOKEN_CURRENCY && l.account === issuer.address
+  );
+
+  if (tokenLine) {
+    console.log("リザーブ残高:", tokenLine.balance, TOKEN_CURRENCY);
+    console.log("発行者:", tokenLine.account);
+    console.log("限度額:", tokenLine.limit, TOKEN_CURRENCY);
+  }
+
+  // === ステップ4（例）：エンドユーザーにトークンを配布 ===
+  // エンドユーザーは先に発行者へのTrustLineを作成する必要があります
+  // その後、リザーブアカウントからトークンを送信：
+  //
+  // const distribution = {
+  //   TransactionType: "Payment",
+  //   Account: reserve.address,
+  //   Destination: "rEndUserAddress",
+  //   Amount: {
+  //     currency: TOKEN_CURRENCY,
+  //     issuer: issuer.address,
+  //     value: "100",
+  //   },
+  // };
+
+  await client.disconnect();
+}
+
+createAndDistributeToken();`,
           },
         },
       ],
       slides: [
         {
-          title: { es: "Proceso de creación de un token", en: "Token creation process", jp: "" },
+          title: { es: "Proceso de creación de un token", en: "Token creation process", jp: "トークン作成プロセス" },
           content: {
             es: "No necesitas smart contracts\n\n1️⃣ Configurar emisor (DefaultRipple)\n2️⃣ Crear TrustLine desde cuenta reserva\n3️⃣ Emitir supply (Payment del emisor)\n4️⃣ Distribuir a usuarios finales\n\nTodo con transacciones nativas",
             en: "No smart contracts needed\n\n1️⃣ Configure issuer (DefaultRipple)\n2️⃣ Create TrustLine from reserve account\n3️⃣ Issue supply (Payment from issuer)\n4️⃣ Distribute to end users\n\nAll with native transactions",
-            jp: "",
+            jp: "スマートコントラクト不要\n\n1️⃣ 発行者を設定（DefaultRipple）\n2️⃣ リザーブアカウントからTrustLineを作成\n3️⃣ サプライを発行（発行者からPayment）\n4️⃣ エンドユーザーに配布\n\nすべてネイティブトランザクションで",
           },
           visual: "🏭",
         },
         {
-          title: { es: "Dos cuentas: emisor + reserva", en: "Two accounts: issuer + reserve", jp: "" },
+          title: { es: "Dos cuentas: emisor + reserva", en: "Two accounts: issuer + reserve", jp: "2つのアカウント：発行者 + リザーブ" },
           content: {
             es: "Buena práctica: separar responsabilidades\n\n• Emisor: solo configura y emite\n  → Proteger con multi-sign\n  → Desactivar clave maestra\n\n• Reserva: opera día a día\n  → Distribuye a usuarios\n  → Vende en el DEX\n\nSi la reserva se compromete, el emisor puede congelar",
             en: "Best practice: separate responsibilities\n\n• Issuer: only configures and issues\n  -> Protect with multi-sign\n  -> Disable master key\n\n• Reserve: day-to-day operations\n  -> Distributes to users\n  -> Sells on the DEX\n\nIf reserve is compromised, the issuer can freeze",
-            jp: "",
+            jp: "ベストプラクティス：責任を分離\n\n• 発行者：設定と発行のみ\n  -> マルチサインで保護\n  -> マスターキーを無効化\n\n• リザーブ：日常業務\n  -> ユーザーへの配布\n  -> DEXでの販売\n\nリザーブが侵害されたら発行者が凍結可能",
           },
           visual: "🔐",
         },
         {
-          title: { es: "Resumen de transacciones", en: "Transaction summary", jp: "" },
+          title: { es: "Resumen de transacciones", en: "Transaction summary", jp: "トランザクションまとめ" },
           content: {
             es: "AccountSet → DefaultRipple en emisor\nTrustSet → Reserva confía en emisor\nPayment → Emisor envía supply a reserva\nPayment → Reserva distribuye a usuarios\n\nUsuarios finales necesitan TrustLine\nantes de poder recibir el token",
             en: "AccountSet -> DefaultRipple on issuer\nTrustSet -> Reserve trusts issuer\nPayment -> Issuer sends supply to reserve\nPayment -> Reserve distributes to users\n\nEnd users need a TrustLine\nbefore they can receive the token",
-            jp: "",
+            jp: "AccountSet -> 発行者にDefaultRipple\nTrustSet -> リザーブが発行者を信頼\nPayment -> 発行者がリザーブにサプライを送信\nPayment -> リザーブがユーザーに配布\n\nエンドユーザーはトークンを\n受け取る前にTrustLineが必要",
           },
           visual: "📋",
         },
@@ -771,7 +1087,7 @@ createAndDistributeToken();`,
       title: {
         es: "Gestión avanzada de tokens",
         en: "Advanced token management",
-        jp: "",
+        jp: "高度なトークン管理",
       },
       theory: {
         es: `Una vez creado tu token, puedes gestionar diversos aspectos: consultar balances, configurar la cuenta emisora y transferir tokens entre usuarios.
@@ -818,14 +1134,35 @@ Without the **DefaultRipple** flag, tokens can only be transferred back to the i
 For token names longer than 3 characters, a 40-character hexadecimal code is used:
 - Format: the name converted to hex, padded with zeros
 - Example: "EURZ" -> hex -> padded to 40 chars`,
-        jp: "",
+        jp: `トークンを作成したら、残高の照会、発行アカウントの設定、ユーザー間のトークン転送など、さまざまな側面を管理できます。
+
+### TrustLineと残高の照会
+
+\`account_lines\`コマンドはアカウントのすべてのTrustLineを返し、保有または発行した各トークンの現在の残高を表示します。
+
+### 発行者の設定
+
+発行アカウントで重要なフラグを設定できます：
+
+- **DefaultRipple**: 発行者を経由せずに第三者間でトークンを転送できるようにします。トークンを自由に転送可能にしたい場合は**有効化が必要**です
+- **RequireAuth**: 誰かがトークンを受け取れるようにする前に、発行者が各TrustLineを承認する必要があります
+
+### 第三者間の転送（Rippling）
+
+**DefaultRipple**フラグなしでは、トークンは発行者にしか送り返せません。有効化すると、トークンは「リップル」できます。つまり、同じ発行者へのTrustLineを持つアカウント間で転送できるようになります。
+
+### 特殊な通貨コード
+
+3文字を超えるトークン名には、40文字の16進数コードが使用されます：
+- 形式：名前を16進数に変換し、ゼロで埋める
+- 例："EURZ" -> hex -> 40文字に埋める`,
       },
       codeBlocks: [
         {
           title: {
             es: "Consultar los tokens (TrustLines) de una cuenta",
             en: "Query the tokens (TrustLines) of an account",
-            jp: "",
+            jp: "アカウントのトークン（TrustLine）を照会する",
           },
           language: "javascript",
           code: {
@@ -889,36 +1226,65 @@ async function getTokenBalances(address) {
 }
 
 getTokenBalances("rYourAddressHere");`,
-            jp: "",
+            jp: `const { Client } = require("xahau");
+
+async function getTokenBalances(address) {
+  const client = new Client("wss://xahau-test.net");
+  await client.connect();
+
+  const response = await client.request({
+    command: "account_lines",
+    account: address,
+    ledger_index: "validated",
+  });
+
+  console.log("=== アカウントのトークン ===");
+  console.log("アドレス:", address);
+
+  if (response.result.lines.length === 0) {
+    console.log("TrustLine（トークン）が見つかりません。");
+  }
+
+  for (const line of response.result.lines) {
+    console.log(\`トークン: \${line.currency}\`);
+    console.log(\`  発行者: \${line.account}\`);
+    console.log(\`  残高: \${line.balance}\`);
+    console.log(\`  限度額: \${line.limit}\`);
+  }
+
+  await client.disconnect();
+}
+
+getTokenBalances("rYourAddressHere");`,
           },
         },
-        
+
       ],
       slides: [
         {
-          title: { es: "Consultar tokens", en: "Query tokens", jp: "" },
+          title: { es: "Consultar tokens", en: "Query tokens", jp: "トークンの照会" },
           content: {
             es: "account_lines → TrustLines de una cuenta\n\n• currency → Código del token\n• account → Emisor\n• balance → Balance actual\n• limit → Límite de confianza",
             en: "account_lines -> TrustLines of an account\n\n• currency -> Token code\n• account -> Issuer\n• balance -> Current balance\n• limit -> Trust limit",
-            jp: "",
+            jp: "account_lines -> アカウントのTrustLine\n\n• currency -> トークンコード\n• account -> 発行者\n• balance -> 現在の残高\n• limit -> 信頼限度額",
           },
           visual: "📊",
         },
         {
-          title: { es: "DefaultRipple", en: "DefaultRipple", jp: "" },
+          title: { es: "DefaultRipple", en: "DefaultRipple", jp: "DefaultRipple" },
           content: {
             es: "Flag esencial para emisores de tokens\n\n• Sin DefaultRipple → Solo ida y vuelta al emisor\n• Con DefaultRipple → Transferible entre terceros\n\nActívalo ANTES de emitir tokens",
             en: "Essential flag for token issuers\n\n• Without DefaultRipple -> Only back and forth to issuer\n• With DefaultRipple -> Transferable between third parties\n\nActivate it BEFORE issuing tokens",
-            jp: "",
+            jp: "トークン発行者に不可欠なフラグ\n\n• DefaultRippleなし -> 発行者との間でのみ\n• DefaultRippleあり -> 第三者間で転送可能\n\nトークン発行前に有効化すること",
           },
           visual: "🔀",
         },
         {
-          title: { es: "Flags importantes para emisores", en: "Important flags for issuers", jp: "" },
+          title: { es: "Flags importantes para emisores", en: "Important flags for issuers", jp: "発行者の重要なフラグ" },
           content: {
             es: "RequireAuth (asfRequireAuth):\n• El emisor autoriza cada TrustLine\n• Ideal para tokens con KYC\n\nDefaultRipple (asfDefaultRipple):\n• Permite transferencia entre terceros\n\nConfigurar ANTES de emitir tokens\nUsar AccountSet con SetFlag/ClearFlag",
             en: "RequireAuth (asfRequireAuth):\n• Issuer authorizes each TrustLine\n• Ideal for tokens with KYC\n\nDefaultRipple (asfDefaultRipple):\n• Allows transfer between third parties\n\nConfigure BEFORE issuing tokens\nUse AccountSet with SetFlag/ClearFlag",
-            jp: "",
+            jp: "RequireAuth（asfRequireAuth）：\n• 発行者が各TrustLineを承認\n• KYCトークンに最適\n\nDefaultRipple（asfDefaultRipple）：\n• 第三者間の転送を許可\n\nトークン発行前に設定する\nAccountSetにSetFlag/ClearFlagを使用",
           },
           visual: "🚩",
         },
@@ -929,7 +1295,7 @@ getTokenBalances("rYourAddressHere");`,
       title: {
         es: "Trading en el DEX nativo",
         en: "Trading on the native DEX",
-        jp: "",
+        jp: "ネイティブDEXでのトレーディング",
       },
       theory: {
         es: `Xahau incluye un **exchange descentralizado (DEX) nativo** directamente en el protocolo. No necesitas smart contracts ni plataformas externas para intercambiar tokens, todo se hace con transacciones nativas.
@@ -1022,14 +1388,58 @@ The Xahau DEX can automatically route multi-hop trades through XAH. If you want 
 2. Buy EUR with XAH
 
 All in a single transaction, transparently. This significantly improves DEX liquidity.`,
-        jp: "",
+        jp: `Xahauにはプロトコルに直接組み込まれた**ネイティブ分散型取引所（DEX）**があります。トークンを交換するためにスマートコントラクトや外部プラットフォームは不要で、すべてネイティブトランザクションで行われます。
+
+### OfferCreate：DEXに注文を出す
+
+\`OfferCreate\`トランザクションにより、DEXの注文書に買いまたは売り注文を出すことができます。2つの主要フィールドがあります：
+
+- **TakerPays**: **受け取りたい**もの（「テイカー」が支払うもの）
+- **TakerGets**: **提供する意思がある**もの（「テイカー」が受け取るもの）
+
+例えば、100 USDをXAHで売りたい場合：
+- TakerPays: 受け取りたいXAHの量
+- TakerGets: 100 USD（提供するもの）
+
+### OfferCancel：未決注文をキャンセルする
+
+まだ実行されていない未決注文がDEXにある場合、元の注文の\`OfferSequence\`を指定して\`OfferCancel\`でキャンセルできます。
+
+### 注文書の仕組み
+
+DEXは各トークンペアの**注文書**（オーダーブック）を管理します：
+- **Bids（買い注文）**: トークンを買いたい注文
+- **Asks（売り注文）**: トークンを売りたい注文
+
+新しい注文が既存の注文と一致した場合（価格が交差）、完全にまたは部分的に自動実行されます。
+
+### OfferCreateの特殊フラグ
+
+- **tfImmediateOrCancel**: 注文は既存の注文に対して即座に実行されます。満たされなかった部分は即座にキャンセルされます。注文書に何も残りません
+- **tfPassive**: 注文は同等またはより良い価格の既存注文に対してのみ実行されます。即時マッチがない場合、注文書には追加されません
+- **tfFillOrKill**: 注文は完全に実行されるかキャンセルされます。部分的な実行は許可されません
+- **tfSell**: 注文が（買いではなく）売りであることを示します。TakerPaysとTakerGetsの解釈方法に影響します
+
+フラグの詳細については[公式ドキュメント](https://xahau.network/docs/protocol-reference/transactions/transaction-types/offercreate/#offercreate-flags)をご覧ください。
+
+### 注文書の照会：book_offers
+
+\`book_offers\`コマンドでトークンペアの未決注文を表示できます。最良の注文を価格順に返します。
+
+### XAHを通じたオートブリッジング
+
+XahauのDEXはXAHを通じてマルチホップ取引を自動的にルーティングできます。USDをEURに交換したいが直接USD/EUR注文がない場合、DEXは：
+1. USDをXAHに売る
+2. XAHでEURを買う
+
+これをすべて1つのトランザクションで透過的に行います。これによりDEXの流動性が大幅に向上します。`,
       },
       codeBlocks: [
         {
           title: {
             es: "Consultar el libro de órdenes de un par de tokens (USD/XAH)",
             en: "Query the order book for a token pair (USD/XAH)",
-            jp: "",
+            jp: "トークンペアの注文書を照会する（EVR/XAH）",
           },
           language: "javascript",
           code: {
@@ -1117,14 +1527,55 @@ async function viewOrderBook() {
 }
 
 viewOrderBook();`,
-            jp: "",
+            jp: `const { Client } = require("xahau");
+
+async function viewOrderBook() {
+ //このサンプルではXahau Mainnetに接続します。DEXが活発に動いている可能性が高いためです。テストネットはDEX活動が少ない傾向がありますが、両方で試すことができます。
+  const client = new Client("wss://xahau.network");
+  await client.connect();
+
+  const issuerAddress = "rEvernodee8dJLaFsujS6q1EiXvZYmHXr8";
+
+  // 注文を照会：XAHと引き換えにEVRを売っているのは誰か？
+  const response = await client.request({
+    command: "book_offers",
+    taker_pays: {
+      currency: "XAH",
+    },
+    taker_gets: {
+      currency: "EVR",
+      issuer: issuerAddress,
+    },
+    limit: 10,
+  });
+
+  console.log("=== 注文書：EVR → XAH ===");
+  console.log(\`見つかった注文数: \${response.result.offers.length}\`);
+
+  for (const offer of response.result.offers) {
+    const getsUSD = offer.TakerGets.value || offer.TakerGets;
+    const paysXAH =
+      typeof offer.TakerPays === "string"
+        ? Number(offer.TakerPays) / 1_000_000
+        : offer.TakerPays.value;
+
+    console.log(\`アカウント: \${offer.Account}\`);
+    console.log(\`  売り: \${getsUSD} EVR\`);
+    console.log(\`  希望: \${paysXAH} XAH\`);
+    console.log(\`  Sequence: \${offer.Sequence}\`);
+  }
+
+  await client.disconnect();
+}
+
+viewOrderBook();`,
           },
         },
         {
           title: {
             es: "Crear una oferta en el DEX (vender 100 Tokens por XAH)",
             en: "Create an offer on the DEX (sell 100 Tokens for XAH)",
-            jp: "",
+            jp: "DEXに注文を出す（100トークンをXAHで売る）",
           },
           language: "javascript",
           code: {
@@ -1259,14 +1710,78 @@ async function createOffer() {
 }
 
 createOffer();`,
-            jp: "",
+            jp: `require("dotenv").config();
+const { Client, Wallet, xahToDrops } = require("xahau");
+
+// token_currencyが3文字超の場合、40文字のhex（右側0埋め）に変換
+function normalizeCurrency(token_currency) {
+  if (typeof token_currency !== "string") return token_currency;
+
+  const cur = token_currency.trim();
+
+  // 3文字以下：標準通貨コード
+  if (cur.length <= 3) return cur;
+
+  // 3文字超：hexに変換して40文字（20バイト）に右側0埋め
+  const hex = Buffer.from(cur, "utf8").toString("hex").toUpperCase();
+
+  if (hex.length > 40) {
+    throw new Error(
+      \`token_currencyが長すぎます: "\${cur}" -> hex \${hex.length} (>40). 最大〜20バイト（UTF-8）.\`
+    );
+  }
+
+  return hex.padEnd(40, "0");
+}
+
+
+async function createOffer() {
+  const client = new Client("wss://xahau-test.net");
+  await client.connect();
+
+  const trader = Wallet.fromSeed(process.env.RESERVE_SEED, {algorithm: 'secp256k1'});
+  const issuerAddress = "rTokenIssuerAddress";
+  const tokenCurrencyInput = "YourTokenName";
+
+  const token_currency = normalizeCurrency(tokenCurrencyInput);
+
+  // 100トークンを50 XAHと引き換えに売る
+  const offer = {
+    TransactionType: "OfferCreate",
+    Account: trader.address,
+    // 受け取りたいもの：50 XAH
+    TakerPays: xahToDrops(50),
+    // 提供するもの：100トークン
+    TakerGets: {
+      currency: token_currency,
+      issuer: issuerAddress,
+      value: "100",
+    },
+  };
+
+  const prepared = await client.autofill(offer);
+  const signed = trader.sign(prepared);
+  const result = await client.submitAndWait(signed.tx_blob);
+
+  console.log("結果:", result.result.meta.TransactionResult);
+
+  if (result.result.meta.TransactionResult === "tesSUCCESS") {
+    console.log("DEXに注文を出しました！");
+    console.log(\`100トークンを50 XAHで売ります（0.5 XAH/トークン）\`);
+    console.log(\`注文のSequence: \${prepared.Sequence}\`);
+  }
+
+  await client.disconnect();
+}
+
+createOffer();`,
           },
         },
         {
           title: {
             es: "Cancelar una oferta existente en el DEX",
             en: "Cancel an existing offer on the DEX",
-            jp: "",
+            jp: "DEXの既存注文をキャンセルする",
           },
           language: "javascript",
           code: {
@@ -1333,35 +1848,66 @@ async function cancelOffer() {
 }
 
 cancelOffer();`,
-            jp: "",
+            jp: `require("dotenv").config();
+const { Client, Wallet } = require("xahau");
+
+async function cancelOffer() {
+  const client = new Client("wss://xahau-test.net");
+  await client.connect();
+
+  const trader = Wallet.fromSeed(process.env.RESERVE_SEED, {algorithm: 'secp256k1'});
+
+  // OfferSequenceを使って注文をキャンセルする
+  const cancel = {
+    TransactionType: "OfferCancel",
+    Account: trader.address,
+    OfferSequence: 12345, // キャンセルする注文のSequence
+  };
+
+  const prepared = await client.autofill(cancel);
+  const signed = trader.sign(prepared);
+  const result = await client.submitAndWait(signed.tx_blob);
+
+  console.log("結果:", result.result.meta.TransactionResult);
+
+  if (result.result.meta.TransactionResult === "tesSUCCESS") {
+    console.log("注文を正常にキャンセルしました！");
+    console.log("トレーダーのアドレス:", trader.address);
+
+  }
+
+  await client.disconnect();
+}
+
+cancelOffer();`,
           },
         },
       ],
       slides: [
         {
-          title: { es: "DEX nativo de Xahau", en: "Xahau native DEX", jp: "" },
+          title: { es: "DEX nativo de Xahau", en: "Xahau native DEX", jp: "XahauネイティブDEX" },
           content: {
             es: "Exchange descentralizado integrado en el protocolo\n\n• Sin smart contracts\n• Sin plataformas externas\n• Liquidación atómica\n• Auto-bridging a través de XAH\n\nTodo con transacciones nativas",
             en: "Decentralized exchange built into the protocol\n\n• No smart contracts\n• No external platforms\n• Atomic settlement\n• Auto-bridging through XAH\n\nAll with native transactions",
-            jp: "",
+            jp: "プロトコルに組み込まれた分散型取引所\n\n• スマートコントラクト不要\n• 外部プラットフォーム不要\n• アトミック決済\n• XAHを通じたオートブリッジング\n\nすべてネイティブトランザクションで",
           },
           visual: "📈",
         },
         {
-          title: { es: "OfferCreate: anatomía de una orden", en: "OfferCreate: anatomy of an order", jp: "" },
+          title: { es: "OfferCreate: anatomía de una orden", en: "OfferCreate: anatomy of an order", jp: "OfferCreate：注文の構造" },
           content: {
             es: "TakerPays → Lo que quieres RECIBIR\nTakerGets → Lo que estás dispuesto a DAR\n\nFlags especiales:\n• tfImmediateOrCancel → Ejecutar o cancelar\n• tfPassive → Solo match existente\n• tfFillOrKill → Ejecutar todo o nada\n• tfSell → Indica que es una venta\n\nOfferCancel → Cancelar orden abierta",
             en: "TakerPays -> What you want to RECEIVE\nTakerGets -> What you are willing to GIVE\n\nSpecial flags:\n• tfImmediateOrCancel -> Execute or cancel\n• tfPassive -> Only match existing\n• tfFillOrKill -> Execute all or nothing\n• tfSell -> Indicates it's a sell\n\nOfferCancel -> Cancel open order",
-            jp: "",
+            jp: "TakerPays -> 受け取りたいもの\nTakerGets -> 提供する意思があるもの\n\n特殊フラグ：\n• tfImmediateOrCancel -> 実行またはキャンセル\n• tfPassive -> 既存注文にのみマッチ\n• tfFillOrKill -> 全量実行またはキャンセル\n• tfSell -> 売り注文であることを示す\n\nOfferCancel -> 未決注文をキャンセル",
           },
           visual: "🔄",
         },
         {
-          title: { es: "Auto-bridging y order book", en: "Auto-bridging and order book", jp: "" },
+          title: { es: "Auto-bridging y order book", en: "Auto-bridging and order book", jp: "オートブリッジングと注文書" },
           content: {
             es: "El DEX enruta trades multi-salto vía XAH\n\nEjemplo: USD → XAH → EUR\n\n• book_offers → Ver el libro de órdenes\n• Bids y Asks se cruzan automáticamente\n• Ejecución parcial o total\n• Liquidez compartida entre pares",
             en: "The DEX routes multi-hop trades via XAH\n\nExample: USD -> XAH -> EUR\n\n• book_offers -> View the order book\n• Bids and Asks cross automatically\n• Partial or full execution\n• Shared liquidity across pairs",
-            jp: "",
+            jp: "DEXはXAHを経由してマルチホップ取引をルーティング\n\n例：USD -> XAH -> EUR\n\n• book_offers -> 注文書を表示\n• BidsとAsksが自動的に交差\n• 部分または全量実行\n• ペア間で流動性を共有",
           },
           visual: "🌐",
         },
@@ -1372,7 +1918,7 @@ cancelOffer();`,
       title: {
         es: "Control avanzado de tokens: Freeze y Clawback",
         en: "Advanced token control: Freeze and Clawback",
-        jp: "",
+        jp: "高度なトークン制御：FreezeとClawback",
       },
       theory: {
         es: `Xahau ofrece a los emisores de tokens herramientas avanzadas de control: **Freeze** (congelación), **Clawback** (recuperación forzada), **Transfer fees** (comisiones de transferencia) y **Authorized TrustLines** (líneas de confianza autorizadas).
@@ -1455,14 +2001,53 @@ The issuer can charge a percentage on each transfer of their token between third
 ### Authorized TrustLines: RequireAuth
 
 The \`RequireAuth\` flag (asfRequireAuth) on the issuing account requires the issuer to **explicitly authorize** each TrustLine before a holder can receive tokens. Useful for tokens that need KYC or prior verification.`,
-        jp: "",
+        jp: `Xahauはトークン発行者に高度な制御ツールを提供します：**Freeze**（凍結）、**Clawback**（強制回収）、**Transfer fees**（転送手数料）、**Authorized TrustLines**（承認済みTrustLine）。
+
+### Freeze：TrustLineの凍結
+
+トークンの発行者はTrustLineを凍結して、ホルダーがトークンを転送できないようにすることができます。3つのレベルがあります：
+
+### 個別Freeze
+発行者とホルダー間の特定のTrustLineを凍結します。\`tfSetFreeze\`フラグを使った\`TrustSet\`で行います。凍結中はホルダーそのトークンを送受信できません。解除するには\`tfClearFreeze\`を使います。
+
+### グローバルFreeze
+発行したトークンの**すべての**TrustLineを凍結します。\`SetFlag: 7\`（asfGlobalFreeze）を使った\`AccountSet\`で有効化します。すべてのホルダーが同時に凍結されます。\`ClearFlag: 7\`で解除できます。
+
+### NoFreeze（取り消し不能）
+\`AccountSet\`で\`SetFlag: 6\`（asfNoFreeze）を有効化すると、発行者は凍結能力を**恒久的**に放棄します。これは取り消せません。ホルダーへの信頼のシグナルです。
+
+### Freezeのユースケース
+- **規制遵守**: 裁判所命令に応じて資金を凍結
+- **セキュリティ侵害**: アカウントが侵害された場合に転送を停止
+- **紛争解決**: 調査中に一時的に凍結
+
+### Clawback：ホルダーからのトークン回収
+
+**Clawback**は発行者が任意のホルダーからトークンを回収できるようにします。これは強力なツールで、トークン発行**前**に設定する必要があります：
+
+1. \`AccountSet\`で\`asfAllowTrustLineClawback\`（フラグ17）を**TrustLine作成前**に有効化する
+2. 有効化後、\`Clawback\`トランザクションを使ってトークンを回収する
+3. **NoFreezeとは組み合わせ不可** — 凍結を放棄した場合、Clawbackもできません
+
+### Transfer fees：転送手数料
+
+発行者は第三者間のトークン転送ごとに割合を徴収できます：
+
+- \`AccountSet\`の\`TransferRate\`フィールドで設定
+- 値は整数で指定：1000000000 = 0%、1001000000 = 0.1%、1010000000 = 1%
+- 発行者への送信時ではなく、第三者間の転送にのみ適用
+- 例：0.1%の手数料で100トークン送信すると、送信者から100.1が徴収される
+
+### Authorized TrustLines：RequireAuth
+
+発行アカウントの\`RequireAuth\`フラグ（asfRequireAuth）は、ホルダーがトークンを受け取れるようになる前に、発行者が**各TrustLineを明示的に承認**することを要求します。KYCや事前確認が必要なトークンに便利です。`,
       },
       codeBlocks: [
         {
           title: {
             es: "Crear una TrustLine desde un holder hacia el emisor",
             en: "Create a TrustLine from a holder toward the issuer",
-            jp: "",
+            jp: "ホルダーから発行者へのTrustLineを作成する",
           },
           language: "javascript",
           code: {
@@ -1600,14 +2185,80 @@ async function createHolderTrustLine() {
 }
 
 createHolderTrustLine();`,
-            jp: "",
+            jp: `require("dotenv").config();
+const { Client, Wallet } = require("xahau");
+
+// このコードはアカウント（ホルダー）からトークン発行者への
+// TrustLineを作成します。必要な場合に発行者がそのTrustLineを
+// 凍結できるようにするために必要です。
+
+// token_currencyが3文字超の場合、40文字のhex（右側0埋め）に変換
+function normalizeCurrency(token_currency) {
+  if (typeof token_currency !== "string") return token_currency;
+
+  const cur = token_currency.trim();
+
+  // 3文字以下：標準通貨コード
+  if (cur.length <= 3) return cur;
+
+  // 3文字超：hexに変換して40文字（20バイト）に右側0埋め
+  const hex = Buffer.from(cur, "utf8").toString("hex").toUpperCase();
+
+  if (hex.length > 40) {
+    throw new Error(
+      \`token_currency too long: "\${cur}" -> hex \${hex.length} (>40). MMax ~20 bytes in UTF-8.\`
+    );
+  }
+
+  return hex.padEnd(40, "0");
+}
+
+async function createHolderTrustLine() {
+  const client = new Client("wss://xahau-test.net");
+  await client.connect();
+
+  // トークンを受け取り、必要に応じてTrustLineを凍結されるホルダー
+  const holder = Wallet.fromSeed(process.env.FROZEN_SEED, {algorithm: 'secp256k1'});
+  const issuerAddress = "rIssuerAddress";
+  const tokenCurrencyInput = "YourTokenName";
+
+  const token_currency = normalizeCurrency(tokenCurrencyInput);
+
+  const trustSet = {
+    TransactionType: "TrustSet",
+    Account: holder.address,
+    LimitAmount: {
+      currency: token_currency,
+      issuer: issuerAddress,
+      value: "1000000", // 受け入れる最大限度額
+    },
+  };
+
+  const prepared = await client.autofill(trustSet);
+  const signed = holder.sign(prepared);
+  const result = await client.submitAndWait(signed.tx_blob);
+
+  console.log("結果:", result.result.meta.TransactionResult);
+
+  if (result.result.meta.TransactionResult === "tesSUCCESS") {
+    console.log("TrustLineを作成しました！");
+    console.log("ホルダー:", holder.address);
+    console.log("発行者:", issuerAddress);
+    console.log("\\n発行者はこのアカウントにトークンを送れるようになりました。");
+    console.log("必要な場合はこのTrustLineを凍結することもできます。");
+  }
+
+  await client.disconnect();
+}
+
+createHolderTrustLine();`,
           },
         },
         {
           title: {
             es: "Congelar la TrustLine de un usuario específico",
             en: "Freeze a specific user's TrustLine",
-            jp: "",
+            jp: "特定ユーザーのTrustLineを凍結する",
           },
           language: "javascript",
           code: {
@@ -1733,35 +2384,95 @@ async function freezeTrustLine() {
 }
 
 freezeTrustLine();`,
-            jp: "",
+            jp: `require("dotenv").config();
+const { Client, Wallet } = require("xahau");
+
+// token_currencyが3文字超の場合、40文字のhex（右側0埋め）に変換
+function normalizeCurrency(token_currency) {
+  if (typeof token_currency !== "string") return token_currency;
+
+  const cur = token_currency.trim();
+
+  // 3文字以下：標準通貨コード
+  if (cur.length <= 3) return cur;
+
+  // 3文字超：hexに変換して40文字（20バイト）に右側0埋め
+  const hex = Buffer.from(cur, "utf8").toString("hex").toUpperCase();
+
+  if (hex.length > 40) {
+    throw new Error(
+      \`token_currency too long: "\${cur}" -> hex \${hex.length} (>40). MMax ~20 bytes in UTF-8.\`
+    );
+  }
+
+  return hex.padEnd(40, "0");
+}
+
+async function freezeTrustLine() {
+  const client = new Client("wss://xahau-test.net");
+  await client.connect();
+
+  const issuer = Wallet.fromSeed(process.env.ISSUER_SEED, {algorithm: 'secp256k1'});
+  const holderAddress = "rHolderAddress";
+  const tokenCurrencyInput = "YourTokenName";
+
+  const token_currency = normalizeCurrency(tokenCurrencyInput);
+
+  // このホルダーとのトークンTrustLineを凍結する
+  const trustSet = {
+    TransactionType: "TrustSet",
+    Account: issuer.address,
+    LimitAmount: {
+      currency: token_currency,
+      issuer: holderAddress,
+      value: "0", // Freeze時は値は重要でない
+    },
+    Flags: 1048576, // tfSetFreeze
+  };
+
+  const prepared = await client.autofill(trustSet);
+  const signed = issuer.sign(prepared);
+  const result = await client.submitAndWait(signed.tx_blob);
+
+  console.log("結果:", result.result.meta.TransactionResult);
+
+  if (result.result.meta.TransactionResult === "tesSUCCESS") {
+    console.log(\`\${holderAddress} のトークンTrustLineを凍結しました\`);
+    console.log("ホルダーはこのトークンを送受信できません");
+  }
+
+  await client.disconnect();
+}
+
+freezeTrustLine();`,
           },
         },
       ],
       slides: [
         {
-          title: { es: "Freeze: congelación de tokens", en: "Freeze: token freezing", jp: "" },
+          title: { es: "Freeze: congelación de tokens", en: "Freeze: token freezing", jp: "Freeze：トークンの凍結" },
           content: {
             es: "El emisor puede congelar transferencias\n\n• Individual Freeze → Una TrustLine específica\n• Global Freeze → TODAS las TrustLines\n• NoFreeze → Renunciar permanentemente\n\nCasos: regulación, seguridad, disputas",
             en: "The issuer can freeze transfers\n\n• Individual Freeze -> A specific TrustLine\n• Global Freeze -> ALL TrustLines\n• NoFreeze -> Permanently renounce\n\nUse cases: regulation, security, disputes",
-            jp: "",
+            jp: "発行者は転送を凍結できます\n\n• 個別Freeze -> 特定のTrustLine\n• グローバルFreeze -> すべてのTrustLine\n• NoFreeze -> 恒久的に放棄\n\nユースケース：規制、セキュリティ、紛争",
           },
           visual: "🧊",
         },
         {
-          title: { es: "Clawback: recuperación forzada", en: "Clawback: forced recovery", jp: "" },
+          title: { es: "Clawback: recuperación forzada", en: "Clawback: forced recovery", jp: "Clawback：強制回収" },
           content: {
             es: "Reclamar tokens de cualquier holder\n\n1️⃣ Activar asfAllowTrustLineClawback\n2️⃣ Usar transacción Clawback\n\n⚠️ Debe activarse ANTES de emitir tokens\n⚠️ Incompatible con NoFreeze",
             en: "Reclaim tokens from any holder\n\n1️⃣ Activate asfAllowTrustLineClawback\n2️⃣ Use Clawback transaction\n\n⚠️ Must be activated BEFORE issuing tokens\n⚠️ Incompatible with NoFreeze",
-            jp: "",
+            jp: "任意のホルダーからトークンを回収\n\n1️⃣ asfAllowTrustLineClawbackを有効化\n2️⃣ Clawbackトランザクションを使用\n\n⚠️ トークン発行前に有効化が必要\n⚠️ NoFreezeとは非互換",
           },
           visual: "🔙",
         },
         {
-          title: { es: "Transfer fees y RequireAuth", en: "Transfer fees and RequireAuth", jp: "" },
+          title: { es: "Transfer fees y RequireAuth", en: "Transfer fees and RequireAuth", jp: "Transfer feesとRequireAuth" },
           content: {
             es: "Transfer fees:\n• TransferRate en AccountSet\n• Porcentaje en cada transferencia entre terceros\n• Ejemplo: 0.1% → 1001000000\n\nRequireAuth:\n• El emisor autoriza cada TrustLine\n• Ideal para tokens con KYC",
             en: "Transfer fees:\n• TransferRate in AccountSet\n• Percentage on each transfer between third parties\n• Example: 0.1% -> 1001000000\n\nRequireAuth:\n• Issuer authorizes each TrustLine\n• Ideal for tokens with KYC",
-            jp: "",
+            jp: "Transfer fees：\n• AccountSetのTransferRate\n• 第三者間転送ごとに割合を徴収\n• 例：0.1% -> 1001000000\n\nRequireAuth：\n• 発行者が各TrustLineを承認\n• KYCトークンに最適",
           },
           visual: "🔐",
         },

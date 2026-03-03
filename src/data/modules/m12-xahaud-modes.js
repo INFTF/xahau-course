@@ -20,8 +20,8 @@ export default {
     {
       id: "m12l1",
       title: {
-        es: "Tipos de nodos en la red Xahau",
-        en: "Node Types in the Xahau Network",
+        es: "Tipos de nodos en la blockchain Xahau",
+        en: "Node Types in the Xahau blockchain",
         jp: "",
       },
       theory: {
@@ -1169,8 +1169,6 @@ A xahaud node configured with no ledger history (\`ledger_history=none\`). Its o
 **Limitations:**
 - Cannot answer historical queries
 - Needs connection to at least one tracking or full history node to work
-
----
 
 ### Hub Node
 A hub node is a well-connected node that acts as a **relay point** between other network nodes. It neither validates nor stores history, but maintains a large number of simultaneous peer connections.

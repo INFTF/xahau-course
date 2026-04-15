@@ -5,14 +5,14 @@ Open-source, multilingual training portal for learning Xahau blockchain developm
 [https://learnxahau.inftf.org](https://learnxahau.inftf.org).
 
 ![License](https://img.shields.io/badge/license-MIT-green)
-![Languages](https://img.shields.io/badge/languages-ES%20%7C%20EN%20%7C%20JP%7C%20KO-blue)
+![Languages](https://img.shields.io/badge/languages-ES%20%7C%20EN%20%7C%20JP%7C%20KO%7C%20ZH-blue)
 
 ## Features
 
 - 📖 **Theory** — Formatted content with markdown support
 - 💻 **Code Blocks** — Copyable code examples with syntax highlighting (C, JavaScript, Bash)
 - 📊 **Presentation Mode** — Fullscreen slides with keyboard navigation
-- 🌐 **Multilingual** — English, Spanish, Japanese and Korean
+- 🌐 **Multilingual** — English, Spanish, Japanese, Korean and Simplified Chinese
 - 📈 **Progress Tracking** — Mark lessons as completed
 - 🔌 **Modular** — Easy to add new modules and lessons
 

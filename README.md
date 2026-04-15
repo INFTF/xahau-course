@@ -12,7 +12,7 @@ Open-source, multilingual training portal for learning Xahau blockchain developm
 - 📖 **Theory** — Formatted content with markdown support
 - 💻 **Code Blocks** — Copyable code examples with syntax highlighting (C, JavaScript, Bash)
 - 📊 **Presentation Mode** — Fullscreen slides with keyboard navigation
-- 🌐 **Multilingual** — Spanish, English, and Japanese
+- 🌐 **Multilingual** — English, Spanish, Japanese and Korean
 - 📈 **Progress Tracking** — Mark lessons as completed
 - 🔌 **Modular** — Easy to add new modules and lessons
 

@@ -6,6 +6,7 @@ export default {
     en: "Anatomy of a transaction",
     jp: "トランザクションの解剖",
     ko: "트랜잭션 해부",
+    zh: "交易剖析",
   },
   lessons: [
     {
@@ -15,6 +16,7 @@ export default {
         en: "Lifecycle of a transaction",
         jp: "トランザクションのライフサイクル",
         ko: "트랜잭션의 생명주기",
+        zh: "交易生命周期",
       },
       theory: {
         es: `Antes de profundizar en tokens, NFTs o smart contracts, es fundamental entender **cómo funciona una transacción de principio a fin** en Xahau. Este conocimiento te ayudará a diagnosticar problemas y construir aplicaciones robustas.
@@ -305,6 +307,78 @@ const tx = {
 - 검증된 ledger에 포함되면 그 트랜잭션은 **최종 결과**입니다
 - reorg도, fork도, "확인 대기"도 없습니다
 - \`tesSUCCESS\` = 영구적으로 성공`,
+        zh: `在深入学习代币、NFT 或智能合约之前，先理解 Xahau 中**一笔交易从开始到结束是如何运作的**非常重要。这些知识能帮助你排查问题，并构建更稳健的应用。
+
+### 完整流程
+
+在 Xahau 中，一笔交易从创建到永久写入账本，会经历 **5 个阶段**：
+
+1. **构建**：定义交易字段（类型、来源、目标、金额等）
+2. **准备（autofill）**：客户端自动补全技术字段（Fee、Sequence、LastLedgerSequence、NetworkID）
+3. **签名**：你的私钥生成加密签名，证明交易由你授权
+4. **提交**：将已签名交易发送到网络节点
+5. **验证**：验证者通过共识将其写入账本，结果成为最终结果
+
+### 阶段 1：构建
+
+你需要定义一个包含交易字段的 JavaScript 对象：
+
+\`\`\`
+const tx = {
+  TransactionType: "Payment",
+  Account: "rSource...",
+  Destination: "rDestination...",
+  Amount: "1000000",
+};
+\`\`\`
+
+你只需要填写**核心字段**。技术字段会在下一阶段自动补全。
+
+### 阶段 2：准备（autofill）
+
+\`client.autofill(tx)\` 方法会查询节点并补上缺失字段：
+
+- **Fee**：交易成本（以 drops 计）。根据当前网络负载计算
+- **Sequence**：账户的序列号（每发出一笔交易就递增）
+- **LastLedgerSequence**：交易可被纳入的最大账本序号（防止“幽灵交易”）
+- **NetworkID**：网络标识符（testnet 与 mainnet）
+
+### 阶段 3：签名
+
+\`wallet.sign(prepared)\` 方法会生成：
+- 使用私钥（ed25519 或 secp256k1）的**数字签名**
+- **tx_blob**：序列化后的十六进制交易，可直接发送
+
+这个签名证明**只有你本人**授权了这笔交易。签名后任何人都无法修改交易内容，否则签名会失效。
+
+### 阶段 4：提交
+
+已签名交易通过 \`client.submit(tx_blob)\` 或 \`client.submitAndWait(tx_blob)\` 提交到节点：
+
+- **submit**：立即发送并返回初步结果
+- **submitAndWait**：发送后**等待**交易被验证或拒绝
+
+节点会把这笔交易传播给网络中的其他节点。
+
+### 阶段 5：验证（共识）
+
+网络验证者会决定是否将该交易纳入下一个账本：
+
+1. 交易进入**验证者队列**
+2. 验证者提议将其写入下一个账本
+3. 如果至少 **80% 的 UNL** 同意，交易就会被纳入
+4. 账本关闭，结果变为**最终且不可逆**
+
+### 需要多久？
+
+从提交到验证通常只需 **3 到 5 秒**，这正是 Xahau 关闭一个账本所需的时间。它不像 Bitcoin 那样有 10 分钟区块，也没有不稳定的确认时间。
+
+### Finality：不可逆的结果
+
+与采用概率最终性的区块链（Bitcoin、Ethereum）不同，Xahau 的结果是**确定性的**：
+- 交易一旦进入已验证账本，就是**最终结果**
+- 没有 reorg、没有分叉、也没有“等待确认”
+- \`tesSUCCESS\` = 永久成功`,
       },
       codeBlocks: [
         {
@@ -313,6 +387,7 @@ const tx = {
             en: "Create .env with your wallet seed",
             jp: "ウォレットのシードで.envを作成",
             ko: "지갑 시드로 .env 만들기",
+            zh: "用钱包种子创建 .env",
           },
           language: "bash",
           code: {
@@ -328,6 +403,9 @@ WALLET_SEED=sYourSeed`,
             ko: `# https://xahau-test.net/wallet 에서 testnet 지갑을 만들고 시드를 받으세요
 # 프로젝트 폴더에 ".env" 파일을 만드세요
 WALLET_SEED=sYourSeed`,
+            zh: `# 访问 https://xahau-test.net/wallet 创建 testnet 钱包并获取种子
+# 在项目文件夹中创建 ".env" 文件
+WALLET_SEED=sYourSeed`,
           },
         },
         {
@@ -336,6 +414,7 @@ WALLET_SEED=sYourSeed`,
             en: "The complete flow step by step",
             jp: "ステップバイステップの完全フロー",
             ko: "전체 흐름 단계별 보기",
+            zh: "完整流程逐步演示",
           },
           language: "javascript",
           code: {
@@ -591,37 +670,103 @@ async function completeFlow() {
 }
 
 completeFlow().catch(console.error);`,
+            zh: `require("dotenv").config();
+const { Client, Wallet } = require("xahau");
+
+async function completeFlow() {
+  const client = new Client("wss://xahau-test.net");
+  await client.connect();
+
+  const wallet = Wallet.fromSeed(process.env.WALLET_SEED, {algorithm: 'secp256k1'});
+
+  // =============================================
+  // 第 1 阶段：构建交易
+  // =============================================
+  const tx = {
+    TransactionType: "Payment",
+    Account: wallet.address,
+    Destination: "rMXEZJecFdn1dVtE21pZ8duZz2E36KGaCp",
+    Amount: "5000000", // 5 XAH（单位：drops）
+  };
+
+  console.log("1. 交易已构建：");
+  console.log("   类型：", tx.TransactionType);
+  console.log("   已定义字段数：", Object.keys(tx).length);
+
+  // =============================================
+  // 第 2 阶段：准备（autofill）
+  // =============================================
+  const prepared = await client.autofill(tx);
+
+  console.log("2. 交易已准备完成（autofill）：");
+  console.log("   Fee：", prepared.Fee, "drops");
+  console.log("   Sequence：", prepared.Sequence);
+  console.log("   LastLedgerSequence：", prepared.LastLedgerSequence);
+  console.log("   NetworkID：", prepared.NetworkID);
+  console.log("   总字段数：", Object.keys(prepared).length);
+
+  // =============================================
+  // 第 3 阶段：签名
+  // =============================================
+  const signed = wallet.sign(prepared);
+
+  console.log("3. 交易已签名：");
+  console.log("   Hash：", signed.hash);
+  console.log("   tx_blob（前 60 个字符）：", signed.tx_blob.substring(0, 60) + "...");
+  console.log("   blob 长度：", signed.tx_blob.length, "个十六进制字符");
+
+  // =============================================
+  // 第 4 阶段：提交
+  // =============================================
+  console.log("4. 正在发送到节点...");
+  const result = await client.submitAndWait(signed.tx_blob);
+
+  // =============================================
+  // 第 5 阶段：验证结果
+  // =============================================
+  console.log("5. 已验证结果：");
+  console.log("   TransactionResult：", result.result.meta.TransactionResult);
+  console.log("   Ledger：", result.result.ledger_index);
+  console.log("   受影响节点数：", result.result.meta.AffectedNodes.length);
+
+  await client.disconnect();
+}
+
+completeFlow().catch(console.error);`,
           },
         },
       ],
       slides: [
         {
-          title: { es: "5 fases de una transacción", en: "5 phases of a transaction", jp: "トランザクションの5フェーズ", ko: "트랜잭션의 5단계" },
+          title: { es: "5 fases de una transacción", en: "5 phases of a transaction", jp: "トランザクションの5フェーズ", ko: "트랜잭션의 5단계", zh: "交易的 5 个阶段" },
           content: {
             es: "1. Construir → Definir campos (tipo, origen, destino)\n2. Preparar → autofill (Fee, Sequence, NetworkID)\n3. Firmar → Firma digital con clave privada\n4. Enviar → submit / submitAndWait\n5. Validar → Consenso → Resultado final",
             en: "1. Build → Define fields (type, source, destination)\n2. Prepare → autofill (Fee, Sequence, NetworkID)\n3. Sign → Digital signature with private key\n4. Submit → submit / submitAndWait\n5. Validate → Consensus → Final result",
             jp: "1. 構築 → フィールド定義（タイプ、送信元、宛先）\n2. 準備 → autofill（Fee、Sequence、NetworkID）\n3. 署名 → 秘密鍵でデジタル署名\n4. 送信 → submit / submitAndWait\n5. 検証 → コンセンサス → 最終結果",
             ko: "1. 구성 → 필드 정의 (유형, 출발지, 목적지)\n2. 준비 → autofill (Fee, Sequence, NetworkID)\n3. 서명 → 개인 키로 디지털 서명\n4. 제출 → submit / submitAndWait\n5. 검증 → 합의 → 최종 결과",
+            zh: "1. 构建 → 定义字段（类型、来源、目标）\n2. 准备 → autofill（Fee、Sequence、NetworkID）\n3. 签名 → 使用私钥生成数字签名\n4. 提交 → submit / submitAndWait\n5. 验证 → 共识 → 最终结果",
           },
           visual: "📋",
         },
         {
-          title: { es: "Autofill: campos automáticos", en: "Autofill: automatic fields", jp: "Autofill：自動フィールド", ko: "Autofill: 자동 필드" },
+          title: { es: "Autofill: campos automáticos", en: "Autofill: automatic fields", jp: "Autofill：自動フィールド", ko: "Autofill: 자동 필드", zh: "Autofill：自动字段" },
           content: {
             es: "client.autofill() rellena por ti:\n\n• Fee → Coste según carga de red\n• Sequence → Número de tx de tu cuenta\n• LastLedgerSequence → Protección anti-fantasma\n• NetworkID → Testnet vs Mainnet",
             en: "client.autofill() fills in for you:\n\n• Fee → Cost based on network load\n• Sequence → Your account's tx number\n• LastLedgerSequence → Anti-ghost protection\n• NetworkID → Testnet vs Mainnet",
             jp: "client.autofill()が自動入力：\n\n• Fee → ネットワーク負荷に基づくコスト\n• Sequence → アカウントのトランザクション番号\n• LastLedgerSequence → ゴースト対策保護\n• NetworkID → Testnet対Mainnet",
             ko: "client.autofill()가 자동으로 채웁니다:\n\n• Fee → 네트워크 부하 기반 비용\n• Sequence → 계정의 tx 번호\n• LastLedgerSequence → 유령 tx 방지\n• NetworkID → Testnet vs Mainnet",
+            zh: "client.autofill() 会自动补全：\n\n• Fee → 基于网络负载计算的成本\n• Sequence → 你的账户交易序号\n• LastLedgerSequence → 防幽灵交易保护\n• NetworkID → Testnet 与 Mainnet",
           },
           visual: "⚙️",
         },
         {
-          title: { es: "Finalidad determinista", en: "Deterministic finality", jp: "決定論的ファイナリティ", ko: "결정적 파이널리티" },
+          title: { es: "Finalidad determinista", en: "Deterministic finality", jp: "決定論的ファイナリティ", ko: "결정적 파이널리티", zh: "确定性终局性" },
           content: {
             es: "Validación en 3-5 segundos\n\n• Sin reorgs ni forks\n• Sin confirmaciones pendientes\n• tesSUCCESS = éxito para siempre\n• Resultado final e irreversible\n\nDiferente a Bitcoin/Ethereum (probabilístico)",
             en: "Validation in 3-5 seconds\n\n• No reorgs or forks\n• No pending confirmations\n• tesSUCCESS = success forever\n• Final and irreversible result\n\nDifferent from Bitcoin/Ethereum (probabilistic)",
             jp: "3〜5秒で検証\n\n• リオーグやフォークなし\n• 保留中の確認なし\n• tesSUCCESS = 永遠の成功\n• 最終的かつ不可逆の結果\n\nビットコイン/イーサリアム（確率的）と異なる",
             ko: "3~5초 안에 검증\n\n• reorg와 fork 없음\n• 확인 대기 없음\n• tesSUCCESS = 영구적인 성공\n• 최종적이고 되돌릴 수 없는 결과\n\n비트코인/이더리움과 다른 결정적 구조",
+            zh: "3 到 5 秒内完成验证\n\n• 没有 reorg 或分叉\n• 没有等待确认\n• tesSUCCESS = 永久成功\n• 结果最终且不可逆\n\n这点与 Bitcoin/Ethereum 的概率最终性不同",
           },
           visual: "✅",
         },
@@ -634,6 +779,7 @@ completeFlow().catch(console.error);`,
         en: "Transaction fields",
         jp: "トランザクションのフィールド",
         ko: "트랜잭션 필드",
+        zh: "交易字段",
       },
       theory: {
         es: `Cada transacción en Xahau es un **objeto con campos específicos**. Algunos campos son obligatorios, otros opcionales, y otros los rellena \`autofill()\`. Entender cada campo te dará control total sobre tus transacciones.
@@ -960,6 +1106,87 @@ LastLedgerSequence는 트랜잭션의 **만료 시점**입니다:
 - memos는 **공개 데이터**이며 트랜잭션 데이터로 영구 저장됩니다
 - 트랜잭션 로직에 영향은 없고 추가 정보만 저장합니다
 - 꼭 필요하지 않다면 블록체인에 불필요한 데이터를 남기지 않도록 사용을 피하는 것이 좋습니다`,
+        zh: `Xahau 中的每笔交易都是一个**包含特定字段的对象**。有些字段是必填的，有些是可选的，还有一些由 \`autofill()\` 自动补全。理解这些字段后，你就能完全掌控自己的交易。
+
+### 所有交易通用的字段
+
+这些字段存在于**所有交易类型**中：
+
+| 字段 | 必填 | 说明 |
+|---|---|---|
+| **TransactionType** | 是 | 类型："Payment"、"TrustSet"、"OfferCreate" 等 |
+| **Account** | 是 | 你的地址（rXXX...）—— 发起交易的账户 |
+| **Fee** | Autofill | 交易成本（单位：drops，1 XAH = 1,000,000 drops） |
+| **Sequence** | Autofill | 账户的序列号 |
+| **LastLedgerSequence** | Autofill | 交易可被纳入的最大账本号 |
+| **NetworkID** | Autofill | 网络 ID（Xahau 主网为 21337） |
+| **SigningPubKey** | 自动（签名时） | 你的公钥（签名时加入） |
+| **TxnSignature** | 自动（签名时） | 数字签名（签名时加入） |
+
+### TransactionType：交易类型
+
+Xahau 支持很多交易类型。最常见的有：
+
+- [Payment](https://xahau.network/docs/protocol-reference/transactions/transaction-types/payment/) — 发送 XAH 或代币
+- [TrustSet](https://xahau.network/docs/protocol-reference/transactions/transaction-types/trustset/) — 创建或修改 trust line
+- [OfferCreate](https://xahau.network/docs/protocol-reference/transactions/transaction-types/offercreate/) — 在 DEX 上创建报价
+- [OfferCancel](https://xahau.network/docs/protocol-reference/transactions/transaction-types/offercancel/) — 取消 DEX 报价
+- [AccountSet](https://xahau.network/docs/protocol-reference/transactions/transaction-types/accountset/) — 配置账户标志
+- [SetHook](https://xahau.network/docs/protocol-reference/transactions/transaction-types/sethook/) — 安装或管理 Hooks（智能合约）
+- [URITokenMint](https://xahau.network/docs/protocol-reference/transactions/transaction-types/uritokenmint/) — 创建 NFT（URIToken）
+- [URITokenBuy](https://xahau.network/docs/protocol-reference/transactions/transaction-types/uritokenbuy/) — 购买 URIToken
+- [URITokenCreateSellOffer](https://xahau.network/docs/protocol-reference/transactions/transaction-types/uritokencreateselloffer/) — 挂售 URIToken
+- [EscrowCreate](https://xahau.network/docs/protocol-reference/transactions/transaction-types/escrowcreate/) — 创建条件支付
+- [EscrowFinish](https://xahau.network/docs/protocol-reference/transactions/transaction-types/escrowfinish/) — 完成 escrow
+- [EscrowCancel](https://xahau.network/docs/protocol-reference/transactions/transaction-types/escrowcancel/) — 取消 escrow
+
+### Fee：交易成本
+
+Xahau 的 Fee 与其他区块链不同：
+
+- 以 **drops** 表示（1 XAH = 1,000,000 drops）
+- 基础 fee 为 **12 drops**（0.000012 XAH），非常便宜
+- fee 会被**销毁**，不会给验证者或其他任何人
+- 网络拥堵时，fee 可能会暂时上涨（**fee escalation**）
+- \`autofill()\` 会根据当前网络负载计算最优 fee
+
+### Sequence：交易顺序
+
+Sequence 是你账户的**递增计数器**：
+
+- 从账户激活时分配的编号开始
+- 每笔成功交易后加 1
+- 确保交易按**顺序**处理
+- 如果你发送两笔相同 Sequence 的交易，只会处理其中一笔
+- 如果中间缺少某个 Sequence（例如发送了 5、6、8，没有 7），那么 8 及之后的交易会排队等待 7 解决
+
+### LastLedgerSequence：防止幽灵交易
+
+LastLedgerSequence 字段是交易的**有效期**：
+
+- 指定交易可被纳入的**最大账本号**
+- 如果当前账本号超过它而交易仍未处理，交易会被丢弃
+- 防止“丢失”的交易在几分钟甚至几小时后才执行
+- \`autofill()\` 会自动设置它（通常是当前账本 + 20）
+
+### Flags：行为修饰符
+
+很多交易类型接受 **Flags** 字段来修改行为：
+
+- Flags 是通过位运算组合的**数值**
+- 例如：在 URITokenMint 中，\`Flags: 1\` 会启用 \`tfBurnable\`
+- 例如：在 OfferCreate 中，\`Flags: 131072\` 会启用 \`tfImmediateOrCancel\`
+- 你可以把多个 flag 的值相加来组合它们
+
+### Memos：附加数据
+
+你可以通过 **Memos** 字段给任何交易附加数据：
+
+- **MemoType**：十六进制表示的 MIME 类型（例如 "text/plain"）
+- **MemoData**：十六进制内容
+- memo 是**公开的**，会作为交易数据永久保存在链上
+- 它们不会影响交易逻辑，只是用于存储附加信息
+- 如果没有明确需要，建议不要使用这些字段，以免在区块链上保存不必要的数据`,
       },
       codeBlocks: [
         {
@@ -968,6 +1195,7 @@ LastLedgerSequence는 트랜잭션의 **만료 시점**입니다:
             en: "Inspect fields before and after autofill",
             jp: "autofill前後のフィールドを確認",
             ko: "autofill 전후 필드 확인",
+            zh: "查看 autofill 前后的字段",
           },
           language: "javascript",
           code: {
@@ -1135,6 +1363,47 @@ async function checkFields() {
 }
 
 checkFields().catch(console.error);`,
+            zh: `require("dotenv").config();
+const { Client, Wallet } = require("xahau");
+
+async function checkFields() {
+  const client = new Client("wss://xahau-test.net");
+  await client.connect();
+
+  const wallet = Wallet.fromSeed(process.env.WALLET_SEED, {algorithm: 'secp256k1'});
+
+  // 只包含核心字段的交易
+  const tx = {
+    TransactionType: "Payment",
+    Account: wallet.address,
+    Destination: "rPTkQoZDeKMbwhs8QsRA1wL6gGA9Ee4C4",
+    Amount: "1000000", // 1 XAH
+  };
+
+  console.log("=== autofill 之前 ===");
+  console.log("已定义字段：", Object.keys(tx));
+  console.log(JSON.stringify(tx, null, 2));
+
+  // autofill 会补齐技术字段
+  const prepared = await client.autofill(tx);
+
+  console.log("=== autofill 之后 ===");
+  console.log("总字段：", Object.keys(prepared));
+  console.log(JSON.stringify(prepared, null, 2));
+
+  // 显示 autofill 新增的字段
+  const newFields = Object.keys(prepared).filter(
+    (k) => !Object.keys(tx).includes(k)
+  );
+  console.log("=== autofill 新增的字段 ===");
+  for (const field of newFields) {
+    console.log("  " + field + ":", prepared[field]);
+  }
+
+  await client.disconnect();
+}
+
+checkFields().catch(console.error);`,
           },
         },
         {
@@ -1143,6 +1412,7 @@ checkFields().catch(console.error);`,
             en: "Build different transaction types",
             jp: "異なるトランザクションタイプの構築",
             ko: "여러 트랜잭션 유형 구성하기",
+            zh: "构建不同类型的交易",
           },
           language: "javascript",
           code: {
@@ -1382,37 +1652,99 @@ const mint = {
 
 console.log("각 유형은 고유한 필드를 가집니다.");
 console.log("공통 필드: TransactionType, Account, Fee, Sequence.");`,
+            zh: `// 展示不同交易类型的构建方式。
+// 这里只展示核心字段，其他字段由 autofill() 补齐。
+
+// --- Payment：发送 XAH ---
+const payment = {
+  TransactionType: "Payment",
+  Account: "rOrigin...",
+  Destination: "rDestination...",
+  Amount: "5000000", // 5 XAH（单位：drops）
+};
+
+// --- Payment：发送代币 ---
+const tokenPayment = {
+  TransactionType: "Payment",
+  Account: "rOrigin...",
+  Destination: "rDestination...",
+  Amount: {
+    currency: "USD",
+    value: "100",
+    issuer: "rIssuer...",
+  },
+};
+
+// --- TrustSet：创建 trust line ---
+const trustSet = {
+  TransactionType: "TrustSet",
+  Account: "rReceiver...",
+  LimitAmount: {
+    currency: "USD",
+    value: "10000",
+    issuer: "rIssuer...",
+  },
+};
+
+// --- OfferCreate：在 DEX 上创建报价 ---
+const offer = {
+  TransactionType: "OfferCreate",
+  Account: "rTrader...",
+  TakerPays: { currency: "USD", value: "50", issuer: "rIssuer..." },
+  TakerGets: "100000000", // 100 XAH
+};
+
+// --- AccountSet：启用标志 ---
+const accountSet = {
+  TransactionType: "AccountSet",
+  Account: "rMyAccount...",
+  SetFlag: 8, // asfDefaultRipple
+};
+
+// --- URITokenMint：创建 NFT ---
+const mint = {
+  TransactionType: "URITokenMint",
+  Account: "rCreator...",
+  URI: "68747470733A2F2F...", // 十六进制 URL
+  Flags: 1, // tfBurnable
+};
+
+console.log("每种类型都有自己的专属字段。");
+console.log("它们都共享：TransactionType、Account、Fee、Sequence。");`,
           },
         },
       ],
       slides: [
         {
-          title: { es: "Campos comunes", en: "Common fields", jp: "共通フィールド", ko: "공통 필드" },
+          title: { es: "Campos comunes", en: "Common fields", jp: "共通フィールド", ko: "공통 필드", zh: "通用字段" },
           content: {
             es: "Toda transacción tiene:\n\n• TransactionType → Tipo de operación\n• Account → Quién envía\n• Fee → Coste (en drops, se quema)\n• Sequence → Orden de txs de la cuenta\n• LastLedgerSequence → Caducidad\n• NetworkID → Red (testnet/mainnet)",
             en: "Every transaction has:\n\n• TransactionType → Type of operation\n• Account → Who sends it\n• Fee → Cost (in drops, burned)\n• Sequence → Account tx ordering\n• LastLedgerSequence → Expiration\n• NetworkID → Network (testnet/mainnet)",
             jp: "すべてのトランザクションに含まれる：\n\n• TransactionType → 操作タイプ\n• Account → 送信者\n• Fee → コスト（drops単位、バーン）\n• Sequence → アカウントのトランザクション順序\n• LastLedgerSequence → 有効期限\n• NetworkID → ネットワーク（testnet/mainnet）",
             ko: "모든 트랜잭션에는 다음이 있습니다:\n\n• TransactionType → 작업 유형\n• Account → 보내는 주체\n• Fee → 비용 (drops, 소각됨)\n• Sequence → 계정 tx 순서\n• LastLedgerSequence → 만료 시점\n• NetworkID → 네트워크 (testnet/mainnet)",
+            zh: "每笔交易都包含：\n\n• TransactionType → 操作类型\n• Account → 发送方\n• Fee → 成本（单位：drops，会被销毁）\n• Sequence → 账户交易顺序\n• LastLedgerSequence → 过期上限\n• NetworkID → 网络（testnet/mainnet）",
           },
           visual: "📝",
         },
         {
-          title: { es: "Tipos de transacción", en: "Transaction types", jp: "トランザクションタイプ", ko: "트랜잭션 유형" },
+          title: { es: "Tipos de transacción", en: "Transaction types", jp: "トランザクションタイプ", ko: "트랜잭션 유형", zh: "交易类型" },
           content: {
             es: "• Payment → Enviar XAH o tokens\n• TrustSet → Trust lines\n• OfferCreate/Cancel → DEX\n• AccountSet → Configurar cuenta\n• SetHook → Smart contracts\n• URITokenMint/Buy → NFTs\n• EscrowCreate/Finish → Pagos condicionales",
             en: "• Payment → Send XAH or tokens\n• TrustSet → Trust lines\n• OfferCreate/Cancel → DEX\n• AccountSet → Configure account\n• SetHook → Smart contracts\n• URITokenMint/Buy → NFTs\n• EscrowCreate/Finish → Conditional payments",
             jp: "• Payment → XAHまたはトークンの送金\n• TrustSet → トラストライン\n• OfferCreate/Cancel → DEX\n• AccountSet → アカウント設定\n• SetHook → スマートコントラクト\n• URITokenMint/Buy → NFT\n• EscrowCreate/Finish → 条件付き支払い",
             ko: "• Payment → XAH 또는 토큰 전송\n• TrustSet → Trust line\n• OfferCreate/Cancel → DEX\n• AccountSet → 계정 설정\n• SetHook → 스마트 컨트랙트\n• URITokenMint/Buy → NFT\n• EscrowCreate/Finish → 조건부 결제",
+            zh: "• Payment → 发送 XAH 或代币\n• TrustSet → Trust lines\n• OfferCreate/Cancel → DEX\n• AccountSet → 配置账户\n• SetHook → 智能合约\n• URITokenMint/Buy → NFT\n• EscrowCreate/Finish → 条件支付",
           },
           visual: "📦",
         },
         {
-          title: { es: "Fee, Sequence y Flags", en: "Fee, Sequence and Flags", jp: "Fee、Sequence、Flags", ko: "Fee, Sequence, Flags" },
+          title: { es: "Fee, Sequence y Flags", en: "Fee, Sequence and Flags", jp: "Fee、Sequence、Flags", ko: "Fee, Sequence, Flags", zh: "Fee、Sequence 与 Flags" },
           content: {
             es: "Fee: 12 drops base (~gratis), se quema\n\nSequence: contador incremental\n• Garantiza orden de ejecución\n• Sin huecos: txs quedan en cola\n\nFlags: modifican comportamiento\n• Se combinan sumando valores\n• Cada tipo tiene sus flags propios",
             en: "Fee: 12 drops base (~free), burned\n\nSequence: incremental counter\n• Ensures execution order\n• No gaps: txs are queued\n\nFlags: modify behavior\n• Combined by adding values\n• Each type has its own flags",
             jp: "Fee：12 drops基本（ほぼ無料）、バーン\n\nSequence：インクリメンタルカウンター\n• 実行順序を保証\n• 欠番はキューに入る\n\nFlags：動作を変更\n• 値を加算して組み合わせ\n• 各タイプ固有のフラグ",
             ko: "Fee: 기본 12 drops (~거의 무료), 소각됨\n\nSequence: 증가 카운터\n• 실행 순서를 보장\n• 중간 번호가 비면 tx가 대기함\n\nFlags: 동작을 수정\n• 값을 더해 조합\n• 각 유형마다 고유 flag 보유",
+            zh: "Fee：基础 12 drops（几乎免费），会被销毁\n\nSequence：递增计数器\n• 保证执行顺序\n• 不能跳号，否则交易会排队\n\nFlags：修改行为\n• 通过数值相加组合\n• 每种交易都有自己的 flags",
           },
           visual: "🔢",
         },
@@ -1425,6 +1757,7 @@ console.log("공통 필드: TransactionType, Account, Fee, Sequence.");`,
         en: "Digital signature and serialization",
         jp: "デジタル署名とシリアライゼーション",
         ko: "디지털 서명과 직렬화",
+        zh: "数字签名与序列化",
       },
       theory: {
         es: `La firma digital es el mecanismo que garantiza que **solo tú puedes autorizar transacciones** desde tu cuenta. Entender cómo funciona te ayudará a comprender la seguridad de Xahau y a depurar problemas de firma.
@@ -1727,6 +2060,81 @@ Xahau는 **멀티서명**을 지원합니다. **여러 계정의 서명**이 필
 - 각 서명자가 트랜잭션에 개별 서명합니다
 - 서명들을 합쳐 함께 전송합니다
 - 공동 계정, DAO, 추가 보안에 유용합니다`,
+        zh: `数字签名是一种机制，用来保证**只有你本人可以从自己的账户授权交易**。理解它的工作方式，有助于你掌握 Xahau 的安全模型，并排查签名相关问题。
+
+### 什么是数字签名？
+
+数字签名是一种数学证明，用来说明：
+1. **这笔交易是你创建的**（认证）
+2. **签名后没有人修改它**（完整性）
+3. **你无法否认自己签过名**（不可抵赖）
+
+### Xahau 中的签名算法
+
+Xahau 支持两种加密算法：
+
+| 算法 | 种子前缀 | 特点 |
+|---|---|---|
+| **ed25519** | sEd... | 更快、更现代、推荐使用 |
+| **secp256k1** | s...（不带 Ed） | 与 Bitcoin/Ethereum 兼容，较早期 |
+
+当你使用 \`Wallet.generate()\` 创建钱包时，默认会使用 **ed25519**。以 \`sEd\` 开头的种子就是 ed25519。
+
+### 签名过程逐步说明
+
+1. **序列化**：交易（JSON 对象）会按照 Xahau 协议转换为**二进制格式**。每个字段都有自己的类型编码和固定顺序。
+
+2. **哈希**：序列化后的二进制数据会经过哈希函数（SHA-512 half），得到一个 **32 字节摘要**。
+
+3. **签名**：你的私钥会对这个哈希生成加密签名。该签名只能用你的公钥验证。
+
+4. **组装**：签名（\`TxnSignature\`）和你的公钥（\`SigningPubKey\`）会被加入已序列化交易中，生成最终的 **tx_blob**。
+
+### tx_blob：可直接发送的交易
+
+\`tx_blob\` 是一个十六进制字符串，包含了**整笔交易**（字段 + 签名）的二进制表示。这才是真正发送到网络上的内容：
+
+\`\`\`
+wallet.sign(prepared)
+// Returns: { tx_blob: "1200002280000000...", hash: "A1B2C3..." }
+\`\`\`
+
+- **tx_blob**：序列化并签名后的交易（十六进制）
+- **hash**：交易的唯一标识符（之后可用来查询）
+
+### 签名验证
+
+当节点收到你的 tx_blob 时：
+
+1. 它会反序列化 blob，提取各个字段
+2. 提取 \`SigningPubKey\` 和 \`TxnSignature\`
+3. 验证签名是否与数据和公钥匹配
+4. 验证该公钥是否对应 \`Account\` 地址
+5. 如果全部一致，交易就是有效的
+
+如果有人改动 tx_blob 中**哪怕一个 bit**，签名都会失效，交易会被拒绝。
+
+### 离线签名
+
+你可以在**没有网络连接**的情况下签名交易：
+
+1. 在联网设备上：用 \`autofill()\` 准备交易
+2. 把准备好的交易复制到离线设备
+3. 在离线设备上：用 \`wallet.sign()\` 完成签名
+4. 把 \`tx_blob\` 再复制回联网设备
+5. 用 \`client.submit(tx_blob)\` 发送
+
+这对**冷钱包**非常有用，因为私钥永远不会接触联网设备。
+
+### 多重签名（MultiSign）
+
+Xahau 支持**多重签名**：一笔交易需要**多个账户共同签名**才有效。它通过 \`SignerListSet\` 配置：
+
+- 你可以定义一个签名人列表（SignerList）及其权重
+- 设置最小法定票数（quorum）
+- 每个签名人分别对交易签名
+- 所有签名会组合后一起提交
+- 适用于共享账户、DAO 或额外安全防护`,
       },
       codeBlocks: [
         {
@@ -1735,6 +2143,7 @@ Xahau는 **멀티서명**을 지원합니다. **여러 계정의 서명**이 필
             en: "Signing and verifying the tx_blob",
             jp: "tx_blobの署名と検証",
             ko: "tx_blob 서명과 검증",
+            zh: "tx_blob 的签名与验证",
           },
           language: "javascript",
           code: {
@@ -2002,6 +2411,72 @@ async function detailedSigning() {
 }
 
 detailedSigning().catch(console.error);`,
+            zh: `require("dotenv").config();
+const { Client, Wallet } = require("xahau");
+
+async function detailedSigning() {
+  const client = new Client("wss://xahau-test.net");
+  await client.connect();
+
+  const wallet = Wallet.fromSeed(process.env.WALLET_SEED, {algorithm: 'secp256k1'});
+
+  console.log("=== 钱包信息 ===");
+  console.log("地址：", wallet.address);
+  console.log("公钥：", wallet.publicKey);
+  console.log("算法：", wallet.publicKey.startsWith("ED") ? "ed25519" : "secp256k1");
+
+  // 构建并准备交易
+  const tx = {
+    TransactionType: "Payment",
+    Account: wallet.address,
+    Destination: "rf1NrYAsv92UPDd8nyCG4A3bez7dhYE61r",
+    Amount: "1000000",
+  };
+
+  const prepared = await client.autofill(tx);
+
+  // 签名
+  const signed = wallet.sign(prepared);
+
+  console.log("=== 签名结果 ===");
+  console.log("Hash（交易 ID）：", signed.hash);
+  console.log("完整 tx_blob：", signed.tx_blob);
+  console.log("长度：", signed.tx_blob.length, "个十六进制字符");
+  console.log("大小：", signed.tx_blob.length / 2, "bytes");
+
+  // 验证交易是否有效
+  // （节点在收到 submit 时会在内部执行）
+  console.log("=== 验证 ===");
+
+  // 尝试按 hash 查询以检查状态
+  const decoded = client.request({
+    command: "tx",
+    transaction: signed.hash,
+  }).catch(() => {
+    // 交易还未进入账本，这是正常现象
+    console.log("该交易尚未提交到网络（当前仅完成签名）。");
+  });
+
+  // 提交
+  console.log("正在将 tx_blob 发送到节点...");
+  const result = await client.submitAndWait(signed.tx_blob);
+  console.log("结果：", result.result.meta.TransactionResult);
+
+  // 现在可以通过 hash 查询
+  const txInfo = await client.request({
+    command: "tx",
+    transaction: signed.hash,
+  });
+
+  console.log("=== 账本中的交易 ===");
+  console.log("类型：", txInfo.result.TransactionType);
+  console.log("SigningPubKey：", txInfo.result.SigningPubKey);
+  console.log("Ledger：", txInfo.result.ledger_index);
+
+  await client.disconnect();
+}
+
+detailedSigning().catch(console.error);`,
           },
         },
         {
@@ -2010,6 +2485,7 @@ detailedSigning().catch(console.error);`,
             en: "Offline signing: prepare on one side, sign on another",
             jp: "オフライン署名：一方で準備し、他方で署名",
             ko: "오프라인 서명: 한쪽에서 준비, 다른 쪽에서 서명",
+            zh: "离线签名：一边准备，另一边签名",
           },
           language: "javascript",
           code: {
@@ -2285,37 +2761,108 @@ async function demo() {
 }
 
 demo().catch(console.error);`,
+            zh: `require("dotenv").config();
+const { Client, Wallet } = require("xahau");
+
+// =============================================
+// 第 1 步：在联网设备上
+// 准备交易（需要联网）
+// =============================================
+async function prepareOnline() {
+  const client = new Client("wss://xahau-test.net");
+  await client.connect();
+
+  const tx = {
+    TransactionType: "Payment",
+    Account: "rYourAddressHere",
+    Destination: "rf1NrYAsv92UPDd8nyCG4A3bez7dhYE61r",
+    Amount: "10000000", // 10 XAH
+  };
+
+  const prepared = await client.autofill(tx);
+  await client.disconnect();
+
+  // 保存为 JSON，以便传到离线设备
+  const txToSign = JSON.stringify(prepared, null, 2);
+  console.log("=== 把这段 JSON 复制到离线设备 ===");
+  console.log(txToSign);
+
+  return prepared;
+}
+
+// =============================================
+// 第 2 步：在离线设备上（无网络）
+// 对交易进行签名
+// =============================================
+function signOffline(preparedJSON) {
+  // 私钥只存在于离线设备
+  const wallet = Wallet.fromSeed(process.env.WALLET_SEED, {algorithm: 'secp256k1'});
+
+  const signed = wallet.sign(preparedJSON);
+
+  console.log("=== 把这个 tx_blob 复制回联网设备 ===");
+  console.log("tx_blob:", signed.tx_blob);
+  console.log("hash:", signed.hash);
+
+  return signed;
+}
+
+// =============================================
+// 第 3 步：在联网设备上
+// 提交已签名交易
+// =============================================
+async function sendOnline(txBlob) {
+  const client = new Client("wss://xahau-test.net");
+  await client.connect();
+
+  const result = await client.submitAndWait(txBlob);
+  console.log("结果:", result.result.meta.TransactionResult);
+
+  await client.disconnect();
+}
+
+// 完整流程演示（为了简单放在一个脚本里）
+async function demo() {
+  const prepared = await prepareOnline();
+  const signed = signOffline(prepared);
+  await sendOnline(signed.tx_blob);
+}
+
+demo().catch(console.error);`,
           },
         },
       ],
       slides: [
         {
-          title: { es: "¿Qué es una firma digital?", en: "What is a digital signature?", jp: "デジタル署名とは？", ko: "디지털 서명이란?" },
+          title: { es: "¿Qué es una firma digital?", en: "What is a digital signature?", jp: "デジタル署名とは？", ko: "디지털 서명이란?", zh: "什么是数字签名？" },
           content: {
             es: "Prueba matemática de que:\n\n• Tú creaste la transacción (autenticación)\n• Nadie la modificó (integridad)\n• No puedes negar haberla firmado (no repudio)\n\nAlgoritmos: ed25519 (sEd...) o secp256k1 (s...)",
             en: "Mathematical proof that:\n\n• You created the transaction (authentication)\n• No one modified it (integrity)\n• You cannot deny having signed it (non-repudiation)\n\nAlgorithms: ed25519 (sEd...) or secp256k1 (s...)",
             jp: "以下を証明する数学的証明：\n\n• あなたがトランザクションを作成（認証）\n• 誰も変更していない（完全性）\n• 署名したことを否定できない（否認不可）\n\nアルゴリズム：ed25519（sEd...）またはsecp256k1（s...）",
             ko: "다음을 증명하는 수학적 증거:\n\n• 본인이 트랜잭션을 만들었다 (인증)\n• 누구도 수정하지 않았다 (무결성)\n• 서명 사실을 부인할 수 없다 (부인 방지)\n\n알고리즘: ed25519 (sEd...) 또는 secp256k1 (s...)",
+            zh: "一种数学证明，用来说明：\n\n• 交易是你创建的（认证）\n• 没有人修改过它（完整性）\n• 你无法否认自己签过名（不可抵赖）\n\n算法：ed25519（sEd...）或 secp256k1（s...）",
           },
           visual: "🔏",
         },
         {
-          title: { es: "El proceso de firma", en: "The signing process", jp: "署名プロセス", ko: "서명 과정" },
+          title: { es: "El proceso de firma", en: "The signing process", jp: "署名プロセス", ko: "서명 과정", zh: "签名过程" },
           content: {
             es: "1. Serializar → JSON a binario\n2. Hash → SHA-512 half (32 bytes)\n3. Firmar → Clave privada genera firma\n4. Ensamblar → tx_blob (hex)\n\nwallet.sign(prepared)\n→ { tx_blob: \"1200...\", hash: \"A1B2...\" }",
             en: "1. Serialize → JSON to binary\n2. Hash → SHA-512 half (32 bytes)\n3. Sign → Private key generates signature\n4. Assemble → tx_blob (hex)\n\nwallet.sign(prepared)\n→ { tx_blob: \"1200...\", hash: \"A1B2...\" }",
             jp: "1. シリアライズ → JSONをバイナリに\n2. ハッシュ → SHA-512 half（32バイト）\n3. 署名 → 秘密鍵が署名を生成\n4. アセンブリ → tx_blob（16進数）\n\nwallet.sign(prepared)\n→ { tx_blob: \"1200...\", hash: \"A1B2...\" }",
             ko: "1. 직렬화 → JSON을 바이너리로\n2. 해시 → SHA-512 half (32 bytes)\n3. 서명 → 개인 키로 서명 생성\n4. 조립 → tx_blob (hex)\n\nwallet.sign(prepared)\n→ { tx_blob: \"1200...\", hash: \"A1B2...\" }",
+            zh: "1. 序列化 → JSON 转为二进制\n2. 哈希 → SHA-512 half（32 bytes）\n3. 签名 → 私钥生成签名\n4. 组装 → tx_blob（hex）\n\nwallet.sign(prepared)\n→ { tx_blob: \"1200...\", hash: \"A1B2...\" }",
           },
           visual: "🔐",
         },
         {
-          title: { es: "Firma offline y multi-firma", en: "Offline signing and multi-signing", jp: "オフライン署名とマルチ署名", ko: "오프라인 서명과 멀티서명" },
+          title: { es: "Firma offline y multi-firma", en: "Offline signing and multi-signing", jp: "オフライン署名とマルチ署名", ko: "오프라인 서명과 멀티서명", zh: "离线签名与多重签名" },
           content: {
             es: "Firma offline (cold wallet):\n• Preparar online → Firmar offline → Enviar online\n• Claves nunca tocan internet\n\nMulti-firma (MultiSign):\n• Múltiples firmantes con pesos\n• Quórum mínimo configurable\n• Ideal para cuentas compartidas",
             en: "Offline signing (cold wallet):\n• Prepare online → Sign offline → Submit online\n• Keys never touch the internet\n\nMulti-signing (MultiSign):\n• Multiple signers with weights\n• Configurable minimum quorum\n• Ideal for shared accounts",
             jp: "オフライン署名（コールドウォレット）：\n• オンライン準備 → オフライン署名 → オンライン送信\n• 秘密鍵がインターネットに触れない\n\nマルチ署名（MultiSign）：\n• 重み付き複数署名者\n• 設定可能な最小クォーラム\n• 共有アカウントに最適",
             ko: "오프라인 서명 (콜드 월렛):\n• 온라인 준비 → 오프라인 서명 → 온라인 제출\n• 키가 인터넷에 닿지 않음\n\n멀티서명 (MultiSign):\n• 가중치를 가진 여러 서명자\n• 최소 quorum 설정 가능\n• 공동 계정에 적합",
+            zh: "离线签名（冷钱包）：\n• 在线准备 → 离线签名 → 在线提交\n• 私钥永不接触互联网\n\n多重签名（MultiSign）：\n• 多个签名人及其权重\n• 最小 quorum 可配置\n• 非常适合共享账户",
           },
           visual: "🧊",
         },
@@ -2328,6 +2875,7 @@ demo().catch(console.error);`,
         en: "Submission, validation and results",
         jp: "送信、検証、結果",
         ko: "제출, 검증, 결과",
+        zh: "提交、验证与结果",
       },
       theory: {
         es: `Una vez firmada la transacción, hay que enviarla a la red y entender los posibles resultados. Xahau tiene un sistema de **códigos de resultado** muy detallado que te indica exactamente qué pasó.
@@ -2670,6 +3218,91 @@ result.result.meta.AffectedNodes      → ledger에서 무엇이 바뀌었는지
 result.result.ledger_index             → 어떤 ledger에 포함됐는지
 result.result.hash                     → 고유 트랜잭션 hash
 \`\`\``,
+        zh: `交易签名完成后，下一步就是将它发送到网络，并理解可能出现的结果。Xahau 拥有一套非常详细的**结果代码**系统，可以准确告诉你发生了什么。
+
+### submit 与 submitAndWait
+
+\`xahau\` 库提供两种提交交易的方法：
+
+**client.submit(tx_blob)**：
+- 发送交易后会**立即**返回
+- 返回的是初步结果，只表示节点是否接受了该交易（不代表已验证）
+- 你之后还需要通过 \`tx\` 查询最终结果
+- 适合需要快速发送大量交易的场景
+
+**client.submitAndWait(tx_blob)**：
+- 发送交易后会**等待**它被写入已验证账本
+- 直接返回最终结果
+- 对大多数场景更方便
+- 通常需要 3 到 10 秒（1 到 2 个账本周期）
+
+### 结果代码分类
+
+交易结果会根据其**前缀**分成不同类别：
+
+### tes：成功
+
+\`tesSUCCESS\` 是唯一的成功代码，表示交易已被正确处理，变更已写入账本。
+
+### tec：交易已被纳入，但执行失败
+
+\`tec\` 代码表示交易**已经被写入账本**（而且 fee 已收取），但实际操作**没有执行成功**：
+
+| 代码 | 含义 |
+|---|---|
+| **tecUNFUNDED_PAYMENT** | 余额不足，无法完成支付 |
+| **tecNO_LINE** | 该代币不存在 trust line |
+| **tecNO_DST** | 目标账户不存在 |
+| **tecDST_TAG_NEEDED** | 目标账户要求 DestinationTag |
+| **tecNO_PERMISSION** | 你没有执行该操作的权限 |
+| **tecINSUFFICIENT_RESERVE** | 没有足够的 XAH 来满足新对象的 reserve |
+| **tecPATH_DRY** | 没有找到可行的支付路径 |
+| **tecKILLED** | 报价因 tfFillOrKill 标志被取消 |
+
+**重要**：出现 \`tec\` 错误时，即使操作失败，fee **仍然会被收取**。
+
+### tef：处理前被拒绝
+
+\`tef\` 代码表示交易在**真正处理之前就被拒绝**。这种情况下 fee **不会被收取**：
+
+| 代码 | 含义 |
+|---|---|
+| **tefPAST_SEQ** | Sequence 已被使用（重复交易） |
+| **tefMAX_LEDGER** | LastLedgerSequence 已经过期 |
+| **tefALREADY** | 该交易已在队列中 |
+
+### tem：格式错误
+
+\`tem\` 代码表示交易**格式不正确**，因此永远不可能有效：
+
+| 代码 | 含义 |
+|---|---|
+| **temMALFORMED** | 字段无效或格式错误 |
+| **temBAD_AMOUNT** | 金额无效（负数、XAH 为 0 等） |
+| **temBAD_FEE** | Fee 无效 |
+| **temDISABLED** | 当前网络禁用了该功能 |
+| **temINVALID_FLAG** | 此类交易使用了无效 flag |
+
+### ter：临时错误（可重试）
+
+\`ter\` 代码表示一种**临时性**错误，稍后重试可能解决：
+
+| 代码 | 含义 |
+|---|---|
+| **terPRE_SEQ** | 前一个 Sequence 的交易仍在等待中 |
+| **terQUEUED** | 交易正在队列中等待（同时在途交易过多） |
+| **terINSUF_FEE_B** | 以当前网络负载来看 fee 不足 |
+
+### 读取完整结果
+
+结果对象中包含了你需要的全部信息：
+
+\`\`\`
+result.result.meta.TransactionResult  → 结果代码（tesSUCCESS 等）
+result.result.meta.AffectedNodes      → 账本中发生了哪些变化
+result.result.ledger_index             → 被纳入了哪个账本
+result.result.hash                     → 交易唯一 hash
+\`\`\``,
       },
       codeBlocks: [
         {
@@ -2678,6 +3311,7 @@ result.result.hash                     → 고유 트랜잭션 hash
             en: "Handle all result types",
             jp: "すべての結果タイプの処理",
             ko: "모든 결과 유형 처리하기",
+            zh: "处理所有结果类型",
           },
           language: "javascript",
           code: {
@@ -2985,38 +3619,117 @@ async function sendChecking() {
 }
 
 sendChecking().catch(console.error);`,
+            zh: `require("dotenv").config();
+const { Client, Wallet } = require("xahau");
+
+async function sendChecking() {
+  const client = new Client("wss://xahau-test.net");
+  await client.connect();
+
+  const wallet = Wallet.fromSeed(process.env.WALLET_SEED, {algorithm: 'secp256k1'});
+
+  const tx = {
+    TransactionType: "Payment",
+    Account: wallet.address,
+    Destination: "rf1NrYAsv92UPDd8nyCG4A3bez7dhYE61r",
+    Amount: "1000000",
+  };
+
+  try {
+    const prepared = await client.autofill(tx);
+    const signed = wallet.sign(prepared);
+    const result = await client.submitAndWait(signed.tx_blob);
+
+    const code = result.result.meta.TransactionResult;
+
+    // 按类别分析结果
+    if (code === "tesSUCCESS") {
+      console.log("成功：交易已被正确处理。");
+      console.log("Ledger:", result.result.ledger_index);
+      console.log("Hash:", signed.hash);
+
+    } else if (code.startsWith("tec")) {
+      // 交易已被写入账本，但操作失败
+      // fee 已收取
+      console.log("失败 (tec):", code);
+      console.log("操作未执行成功，但 fee 已被收取。");
+
+      // 具体诊断
+      switch (code) {
+        case "tecUNFUNDED_PAYMENT":
+          console.log("→ 余额不足。");
+          break;
+        case "tecNO_DST":
+          console.log("→ 目标账户不存在。");
+          break;
+        case "tecDST_TAG_NEEDED":
+          console.log("→ 缺少 DestinationTag。");
+          break;
+        case "tecINSUFFICIENT_RESERVE":
+          console.log("→ 没有足够的 XAH 用于 reserve。");
+          break;
+        default:
+          console.log("→ 请查阅文档了解:", code);
+      }
+
+    } else if (code.startsWith("tef")) {
+      console.log("被拒绝 (tef):", code);
+      console.log("交易在处理前就被拒绝了。");
+      console.log("fee 未被收取。");
+
+    } else if (code.startsWith("tem")) {
+      console.log("格式错误 (tem):", code);
+      console.log("交易存在格式问题。");
+      console.log("请检查字段和值。");
+
+    } else if (code.startsWith("ter")) {
+      console.log("临时错误 (ter):", code);
+      console.log("你可以几秒后重试。");
+    }
+
+  } catch (error) {
+    console.error("连接或提交错误:", error.message);
+  }
+
+  await client.disconnect();
+}
+
+sendChecking().catch(console.error);`,
           },
         },
 
       ],
       slides: [
         {
-          title: { es: "submit vs submitAndWait", en: "submit vs submitAndWait", jp: "submit対submitAndWait", ko: "submit vs submitAndWait" },
+          title: { es: "submit vs submitAndWait", en: "submit vs submitAndWait", jp: "submit対submitAndWait", ko: "submit vs submitAndWait", zh: "submit 与 submitAndWait" },
           content: {
             es: "submit():\n• Envía y devuelve inmediatamente\n• Resultado preliminar (no final)\n• Rápido, para enviar muchas txs\n\nsubmitAndWait():\n• Envía y espera validación (3-10s)\n• Resultado final directo\n• Recomendado para la mayoría de casos",
             en: "submit():\n• Sends and returns immediately\n• Preliminary result (not final)\n• Fast, for sending many txs\n\nsubmitAndWait():\n• Sends and waits for validation (3-10s)\n• Direct final result\n• Recommended for most cases",
             jp: "submit()：\n• 送信して即座に返す\n• 暫定結果（最終でない）\n• 高速、多くのtxを送信する場合\n\nsubmitAndWait()：\n• 送信して検証を待つ（3〜10秒）\n• 直接最終結果\n• ほとんどの場合に推奨",
             ko: "submit():\n• 전송 후 즉시 반환\n• 예비 결과 (최종 아님)\n• 빠르며 많은 tx 전송에 적합\n\nsubmitAndWait():\n• 전송 후 검증까지 대기 (3~10초)\n• 최종 결과 바로 반환\n• 대부분의 경우 권장",
+            zh: "submit():\n• 发送后立即返回\n• 返回初步结果（不是最终结果）\n• 很快，适合批量发送交易\n\nsubmitAndWait():\n• 发送后等待验证（3 到 10 秒）\n• 直接拿到最终结果\n• 适合大多数场景",
           },
           visual: "📤",
         },
         {
-          title: { es: "Códigos de resultado", en: "Result codes", jp: "結果コード", ko: "결과 코드" },
+          title: { es: "Códigos de resultado", en: "Result codes", jp: "結果コード", ko: "결과 코드", zh: "结果代码" },
           content: {
             es: "• tesSUCCESS → Éxito\n• tec... → Incluida pero falló (fee cobrado)\n• tef... → Rechazada (fee NO cobrado)\n• tem... → Mal formada (error de formato)\n• ter... → Error temporal (reintentar)\n\nSiempre verifica meta.TransactionResult",
             en: "• tesSUCCESS → Success\n• tec... → Included but failed (fee charged)\n• tef... → Rejected (fee NOT charged)\n• tem... → Malformed (format error)\n• ter... → Temporary error (retry)\n\nAlways check meta.TransactionResult",
             jp: "• tesSUCCESS → 成功\n• tec... → 含まれたが失敗（Fee徴収）\n• tef... → 拒否（Fee未徴収）\n• tem... → 不正形式（フォームエラー）\n• ter... → 一時的エラー（リトライ）\n\n常にmeta.TransactionResultを確認",
             ko: "• tesSUCCESS → 성공\n• tec... → 포함됐지만 실패 (fee 청구)\n• tef... → 거부됨 (fee 미청구)\n• tem... → 형식 오류\n• ter... → 일시적 오류 (재시도)\n\n항상 meta.TransactionResult를 확인하세요",
+            zh: "• tesSUCCESS → 成功\n• tec... → 已纳入账本但执行失败（fee 已收）\n• tef... → 被拒绝（fee 未收）\n• tem... → 格式错误\n• ter... → 临时错误（可重试）\n\n始终检查 meta.TransactionResult",
           },
           visual: "🏷️",
         },
         {
-          title: { es: "Errores tec más comunes", en: "Most common tec errors", jp: "最も一般的なtecエラー", ko: "가장 흔한 tec 오류" },
+          title: { es: "Errores tec más comunes", en: "Most common tec errors", jp: "最も一般的なtecエラー", ko: "가장 흔한 tec 오류", zh: "最常见的 tec 错误" },
           content: {
             es: "• tecUNFUNDED_PAYMENT → Sin balance\n• tecNO_DST → Destino no existe\n• tecDST_TAG_NEEDED → Falta tag\n• tecNO_LINE → Sin trust line\n• tecINSUFFICIENT_RESERVE → Sin reserva\n• tecPATH_DRY → Sin ruta de pago\n\nEl fee SE cobra en errores tec",
             en: "• tecUNFUNDED_PAYMENT → No balance\n• tecNO_DST → Destination doesn't exist\n• tecDST_TAG_NEEDED → Missing tag\n• tecNO_LINE → No trust line\n• tecINSUFFICIENT_RESERVE → No reserve\n• tecPATH_DRY → No payment path\n\nThe fee IS charged on tec errors",
             jp: "• tecUNFUNDED_PAYMENT → 残高なし\n• tecNO_DST → 宛先が存在しない\n• tecDST_TAG_NEEDED → タグなし\n• tecNO_LINE → トラストラインなし\n• tecINSUFFICIENT_RESERVE → リザーブなし\n• tecPATH_DRY → 支払いルートなし\n\ntecエラーではFeeが徴収される",
             ko: "• tecUNFUNDED_PAYMENT → 잔액 부족\n• tecNO_DST → 목적지 없음\n• tecDST_TAG_NEEDED → 태그 누락\n• tecNO_LINE → trust line 없음\n• tecINSUFFICIENT_RESERVE → reserve 부족\n• tecPATH_DRY → 결제 경로 없음\n\ntec 오류에서는 fee가 청구됩니다",
+            zh: "• tecUNFUNDED_PAYMENT → 余额不足\n• tecNO_DST → 目标不存在\n• tecDST_TAG_NEEDED → 缺少标签\n• tecNO_LINE → 没有 trust line\n• tecINSUFFICIENT_RESERVE → reserve 不足\n• tecPATH_DRY → 没有支付路径\n\n出现 tec 错误时，fee 依然会被收取",
           },
           visual: "⚠️",
         },
@@ -3029,6 +3742,7 @@ sendChecking().catch(console.error);`,
         en: "Transactions at the ledger level",
         jp: "レジャーレベルのトランザクション",
         ko: "레저 수준의 트랜잭션",
+        zh: "账本层级的交易",
       },
       theory: {
         es: `Para entender realmente cómo funcionan las transacciones, necesitas ver lo que ocurre **dentro del ledger** cuando una transacción se procesa. Esto te ayudará a depurar problemas complejos y a entender la metadata.
@@ -3467,6 +4181,115 @@ ledger가 닫히면 다음을 요약하는 **hash**가 계산됩니다:
 - 완전한 ledger 상태 (state tree)
 
 검증자가 UNL의 80%와 다른 hash를 계산하면 그 ledger는 버려집니다. 이것이 네트워크 일관성을 보장합니다.`,
+        zh: `如果你想真正理解交易是如何工作的，就需要看到交易被处理时**账本内部发生了什么**。这能帮助你调试复杂问题，也能更好理解 metadata。
+
+### 一笔交易如何修改账本？
+
+当一笔交易被成功处理后，它会修改**账本状态**，也就是账本数据库中存储的对象。这些变化会记录在交易的 **metadata** 中。
+
+### AffectedNodes：交易留下的痕迹
+
+\`meta.AffectedNodes\` 字段是一个数组，用来描述账本中**到底发生了哪些变化**。每个受影响节点都属于以下三种类型之一：
+
+### CreatedNode：新对象
+
+账本中新建了一个对象：
+
+\`\`\`
+{
+  "CreatedNode": {
+    "LedgerEntryType": "RippleState",  // 对象类型
+    "LedgerIndex": "ABC123...",         // 对象唯一 ID
+    "NewFields": {                      // 新对象的字段
+      "Balance": { "value": "100" },
+      "LowLimit": { ... },
+      "HighLimit": { ... }
+    }
+  }
+}
+\`\`\`
+
+例如：新的 trust line、新的 DEX 报价、新的 URIToken。
+
+### ModifiedNode：已修改对象
+
+一个已有对象被修改：
+
+\`\`\`
+{
+  "ModifiedNode": {
+    "LedgerEntryType": "AccountRoot",
+    "LedgerIndex": "DEF456...",
+    "PreviousFields": {                // 修改前状态
+      "Balance": "100000000"
+    },
+    "FinalFields": {                   // 修改后状态
+      "Balance": "95000000",
+      "Sequence": 43
+    }
+  }
+}
+\`\`\`
+
+\`PreviousFields\` 只展示**发生变化的字段**，而不是对象的全部字段。\`FinalFields\` 展示修改后的完整状态。
+
+### DeletedNode：已删除对象
+
+一个对象从账本中被移除：
+
+\`\`\`
+{
+  "DeletedNode": {
+    "LedgerEntryType": "Offer",
+    "LedgerIndex": "GHI789...",
+    "FinalFields": {                   // 删除时的状态
+      "TakerPays": "0",
+      "TakerGets": "0"
+    }
+  }
+}
+\`\`\`
+
+例如：报价已完成或取消、trust line 被删除（余额为 0）、URIToken 被销毁。
+
+### Balance changes：追踪资金流动
+
+在 Payment 交易中，你可以通过查看 \`AccountRoot\` 类型的 \`ModifiedNode\`，准确追踪资金如何流动：
+
+- 源账户：\`Balance\` 减少（发送了 XAH）
+- 目标账户：\`Balance\` 增加（收到了 XAH）
+- 两边余额差额等于 \`Amount\` + \`Fee\`
+
+如果是代币（IOU），变化会出现在 \`RippleState\` 类型的 \`ModifiedNode\` 中。
+
+### Reserves：reserve 系统
+
+Xahau 账本使用一套会影响可用余额的 **reserve** 系统：
+
+- **基础 reserve**：1 XAH —— 账户存在所需的最低值
+- **对象 reserve**：账户每拥有一个对象，就要额外占用 0.2 XAH
+
+账本中的每个对象（trust line、报价、URIToken、Hook）都会提高 reserve。被占用的 XAH 在删除对象之前无法使用。
+
+### 一个账本中的处理顺序
+
+在同一个账本内，交易会按**确定性的顺序**处理：
+
+1. 交易按**规范哈希（canonical hash）**排序，而不是按 Sequence 或发送时间排序
+2. 按该顺序逐笔处理
+3. 每笔交易都会看到前一笔交易执行后的账本状态
+4. 如果两笔交易争夺同一资源，哈希顺序靠前的那笔会获胜
+
+这保证了**所有验证者都会计算出完全相同的结果**，无论他们接收交易的顺序如何。
+
+### Ledger hash
+
+一个账本关闭时，会计算一个**hash** 来汇总：
+- 上一个账本的 hash（账本链）
+- 所有被纳入的交易及其 metadata
+- 完整账本状态（state tree）
+
+如果某个验证者算出的 hash 与 UNL 中 80% 的结果不一致，它的账本就会被丢弃。这就是网络一致性的保障。`,
       },
       codeBlocks: [
         {
@@ -3475,6 +4298,7 @@ ledger가 닫히면 다음을 요약하는 **hash**가 계산됩니다:
             en: "Analyze a transaction's AffectedNodes",
             jp: "トランザクションのAffectedNodesを分析",
             ko: "트랜잭션의 AffectedNodes 분석",
+            zh: "分析交易的 AffectedNodes",
           },
           language: "javascript",
           code: {
@@ -3834,6 +4658,95 @@ async function analyzeMetadata() {
 }
 
 analyzeMetadata().catch(console.error);`,
+            zh: `require("dotenv").config();
+const { Client, Wallet } = require("xahau");
+
+async function analyzeMetadata() {
+  const client = new Client("wss://xahau-test.net");
+  await client.connect();
+
+  const wallet = Wallet.fromSeed(process.env.WALLET_SEED, {algorithm: 'secp256k1'});
+
+  // 发送一笔 payment 以分析其 metadata
+  const tx = {
+    TransactionType: "Payment",
+    Account: wallet.address,
+    Destination: "rf1NrYAsv92UPDd8nyCG4A3bez7dhYE61r",
+    Amount: "5000000", // 5 XAH
+  };
+
+  const prepared = await client.autofill(tx);
+  const signed = wallet.sign(prepared);
+  const result = await client.submitAndWait(signed.tx_blob);
+
+  const meta = result.result.meta;
+  console.log("=== METADATA 分析 ===");
+  console.log("结果:", meta.TransactionResult);
+  console.log("受影响节点数:", meta.AffectedNodes.length);
+
+  // 对受影响节点分类
+  const created = [];
+  const modified = [];
+  const deleted = [];
+
+  for (const node of meta.AffectedNodes) {
+    if (node.CreatedNode) {
+      created.push(node.CreatedNode);
+    } else if (node.ModifiedNode) {
+      modified.push(node.ModifiedNode);
+    } else if (node.DeletedNode) {
+      deleted.push(node.DeletedNode);
+    }
+  }
+
+  // 显示新建对象
+  if (created.length > 0) {
+    console.log("--- 新建对象 ---");
+    for (const n of created) {
+      console.log("  +", n.LedgerEntryType);
+      console.log("   Index:", n.LedgerIndex);
+    }
+  }
+
+  // 显示修改对象
+  if (modified.length > 0) {
+    console.log("--- 已修改对象 ---");
+    for (const n of modified) {
+      console.log("  ~", n.LedgerEntryType);
+      if (n.PreviousFields && n.FinalFields) {
+        // 显示余额变化（AccountRoot）
+        if (n.PreviousFields.Balance && n.FinalFields.Balance) {
+          const before = Number(n.PreviousFields.Balance) / 1000000;
+          const after = Number(n.FinalFields.Balance) / 1000000;
+          const diff = after - before;
+          console.log("   余额:", before, "→", after, "XAH");
+          console.log("   变化:", diff > 0 ? "+" : "", diff.toFixed(6), "XAH");
+        }
+        // 显示 Sequence 变化
+        if (n.FinalFields.Sequence) {
+          console.log("   Sequence:", n.FinalFields.Sequence);
+        }
+      }
+    }
+  }
+
+  // 显示删除对象
+  if (deleted.length > 0) {
+    console.log("--- 已删除对象 ---");
+    for (const n of deleted) {
+      console.log("  -", n.LedgerEntryType);
+    }
+  }
+
+  // 余额摘要
+  console.log("--- 摘要 ---");
+  console.log("已支付 Fee:", Number(result.result.Fee) / 1000000, "XAH");
+  console.log("该 Fee 已被销毁（不会进入任何账户）。");
+
+  await client.disconnect();
+}
+
+analyzeMetadata().catch(console.error);`,
           },
         },
         {
@@ -3842,6 +4755,7 @@ analyzeMetadata().catch(console.error);`,
             en: "Query your account's current reserve",
             jp: "アカウントの現在のリザーブを照会",
             ko: "계정의 현재 reserve 조회",
+            zh: "查询你账户当前的 reserve",
           },
           language: "javascript",
           code: {
@@ -4089,37 +5003,101 @@ async function checkReserve(address) {
 }
 // 자신의 계정 또는 rf1NrYAsv92UPDd8nyCG4A3bez7dhYE61r 를 사용할 수 있습니다
 checkReserve("rYourAccountHere");`,
+            zh: `require("dotenv").config();
+const { Client } = require("xahau");
+
+async function checkReserve(address) {
+  const client = new Client("wss://xahau-test.net");
+  await client.connect();
+
+  // 获取当前 reserve 的服务器信息
+  const serverInfo = await client.request({ command: "server_info" });
+  const ledgerInfo = serverInfo.result.info.validated_ledger;
+  const baseReserve = ledgerInfo.reserve_base_xrp; // 单位：XAH
+  const ownerReserve = ledgerInfo.reserve_inc_xrp; // 单位：XAH
+
+  console.log("=== 网络 RESERVE ===");
+  console.log("基础 reserve（每个账户）：", baseReserve, "XAH");
+  console.log("对象 reserve（每个对象）：", ownerReserve, "XAH");
+
+  // 获取账户信息
+  const accountInfo = await client.request({
+    command: "account_info",
+    account: address,
+    ledger_index: "validated",
+  });
+
+  const account = accountInfo.result.account_data;
+  const balance = Number(account.Balance) / 1000000;
+  const ownerCount = account.OwnerCount;
+  const totalReserve = baseReserve + (ownerCount * ownerReserve);
+  const available = balance - totalReserve;
+
+  console.log("=== 你的账户 ===");
+  console.log("地址:", address);
+  console.log("总余额:", balance, "XAH");
+  console.log("账本中的对象数:", ownerCount);
+  console.log("总 reserve:", totalReserve, "XAH");
+  console.log("  →", baseReserve, "XAH（基础）");
+  console.log("  +", ownerCount, "x", ownerReserve, "=", ownerCount * ownerReserve, "XAH（对象）");
+  console.log("可用余额:", available, "XAH");
+
+  // 显示你拥有哪些对象
+  const objects = await client.request({
+    command: "account_objects",
+    account: address,
+    ledger_index: "validated",
+  });
+
+  const byType = {};
+  for (const obj of objects.result.account_objects) {
+    const type = obj.LedgerEntryType;
+    byType[type] = (byType[type] || 0) + 1;
+  }
+
+  console.log("=== 按类型统计对象 ===");
+  for (const [type, count] of Object.entries(byType)) {
+    console.log("  " + type + ":", count, "(reserve:", count * ownerReserve, "XAH)");
+  }
+
+  await client.disconnect();
+}
+// 你可以使用自己的账户，或 rf1NrYAsv92UPDd8nyCG4A3bez7dhYE61r
+checkReserve("rYourAccountHere");`,
           },
         },
       ],
       slides: [
         {
-          title: { es: "AffectedNodes", en: "AffectedNodes", jp: "AffectedNodes", ko: "AffectedNodes" },
+          title: { es: "AffectedNodes", en: "AffectedNodes", jp: "AffectedNodes", ko: "AffectedNodes", zh: "AffectedNodes" },
           content: {
             es: "Cada transacción registra qué cambió:\n\n• CreatedNode → Nuevo objeto en el ledger\n• ModifiedNode → Objeto existente modificado\n  (PreviousFields → FinalFields)\n• DeletedNode → Objeto eliminado\n\nLa huella exacta de la transacción",
             en: "Each transaction records what changed:\n\n• CreatedNode → New object in the ledger\n• ModifiedNode → Existing object modified\n  (PreviousFields → FinalFields)\n• DeletedNode → Object deleted\n\nThe exact footprint of the transaction",
             jp: "各トランザクションが変化を記録：\n\n• CreatedNode → レジャー内の新しいオブジェクト\n• ModifiedNode → 既存オブジェクトの変更\n  （PreviousFields → FinalFields）\n• DeletedNode → 削除されたオブジェクト\n\nトランザクションの正確な足跡",
             ko: "각 트랜잭션은 바뀐 내용을 기록합니다:\n\n• CreatedNode → ledger의 새 객체\n• ModifiedNode → 기존 객체 수정\n  (PreviousFields → FinalFields)\n• DeletedNode → 삭제된 객체\n\n트랜잭션의 정확한 흔적",
+            zh: "每笔交易都会记录发生了什么变化：\n\n• CreatedNode → 账本中新建对象\n• ModifiedNode → 已有对象被修改\n  （PreviousFields → FinalFields）\n• DeletedNode → 对象被删除\n\n这就是交易的精确痕迹",
           },
           visual: "🔍",
         },
         {
-          title: { es: "Sistema de reservas", en: "Reserve system", jp: "リザーブシステム", ko: "Reserve 시스템" },
+          title: { es: "Sistema de reservas", en: "Reserve system", jp: "リザーブシステム", ko: "Reserve 시스템", zh: "Reserve 系统" },
           content: {
             es: "Reserva base: 1 XAH por cuenta\nReserva por objeto: 0.2 XAH cada uno\n\nObjetos que consumen reserva:\n• Trust lines, Ofertas DEX\n• URITokens, Hooks\n\nEliminar objeto = liberar reserva\nDisponible = Balance - Reserva total",
             en: "Base reserve: 1 XAH per account\nOwner reserve: 0.2 XAH each\n\nObjects that consume reserve:\n• Trust lines, DEX Offers\n• URITokens, Hooks\n\nDelete object = free reserve\nAvailable = Balance - Total reserve",
             jp: "基本リザーブ：アカウントごと1 XAH\n所有者リザーブ：オブジェクトごと0.2 XAH\n\nリザーブを消費するオブジェクト：\n• トラストライン、DEXオファー\n• URIToken、Hook\n\nオブジェクト削除 = リザーブ解放\n使用可能 = 残高 - 総リザーブ",
             ko: "기본 reserve: 계정당 1 XAH\n객체 reserve: 객체당 0.2 XAH\n\nreserve를 소비하는 객체:\n• Trust line, DEX 오퍼\n• URIToken, Hook\n\n객체 삭제 = reserve 해제\n사용 가능 = 잔액 - 총 reserve",
+            zh: "基础 reserve：每个账户 1 XAH\n对象 reserve：每个对象 0.2 XAH\n\n会消耗 reserve 的对象：\n• Trust lines、DEX 报价\n• URITokens、Hooks\n\n删除对象 = 释放 reserve\n可用余额 = Balance - 总 reserve",
           },
           visual: "💰",
         },
         {
-          title: { es: "Orden y consistencia", en: "Order and consistency", jp: "順序と一貫性", ko: "순서와 일관성" },
+          title: { es: "Orden y consistencia", en: "Order and consistency", jp: "順序と一貫性", ko: "순서와 일관성", zh: "顺序与一致性" },
           content: {
             es: "Dentro de un ledger:\n\n• Txs ordenadas por hash canónico\n• Procesadas secuencialmente\n• Mismo resultado en todos los nodos\n\nHash del ledger resume:\n• Ledger anterior + Txs + Estado\n• 80% UNL debe coincidir\n• Garantiza consistencia total",
             en: "Within a ledger:\n\n• Txs ordered by canonical hash\n• Processed sequentially\n• Same result on all nodes\n\nLedger hash summarizes:\n• Previous ledger + Txs + State\n• 80% UNL must agree\n• Guarantees total consistency",
             jp: "レジャー内：\n\n• 正規ハッシュで順序付け\n• 順次処理\n• すべてのノードで同じ結果\n\nレジャーハッシュが要約：\n• 前のレジャー + トランザクション + 状態\n• UNLの80%が一致必要\n• 完全な一貫性を保証",
             ko: "하나의 ledger 안에서:\n\n• tx는 canonical hash 순으로 정렬\n• 순차적으로 처리\n• 모든 노드에서 같은 결과\n\nledger hash는 다음을 요약:\n• 이전 ledger + tx + 상태\n• UNL의 80%가 일치해야 함\n• 완전한 일관성 보장",
+            zh: "在一个 ledger 内：\n\n• 交易按 canonical hash 排序\n• 按顺序逐笔处理\n• 所有节点得到相同结果\n\nledger hash 汇总了：\n• 前一个 ledger + 交易 + 状态\n• 必须有 80% 的 UNL 一致\n• 这保证了完整一致性",
           },
           visual: "🔗",
         },

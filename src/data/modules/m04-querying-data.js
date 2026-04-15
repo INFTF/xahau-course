@@ -463,32 +463,35 @@ getAccountInfo("rYourAddressHere");`,
       ],
       slides: [
         {
-          title: { es: "Conexión a Xahau", en: "Connecting to Xahau", jp: "Xahauへの接続", ko: "Xahau 연결" },
+          title: { es: "Conexión a Xahau", en: "Connecting to Xahau", jp: "Xahauへの接続", ko: "Xahau 연결", zh: "连接到 Xahau" },
           content: {
             es: "Conexión vía WebSocket a nodos públicos\n\n🌐 Mainnet: wss://xahau.network\n🧪 Testnet: wss://xahau-test.net\n\nAPI JSON-RPC para todas las consultas",
             en: "WebSocket connection to public nodes\n\n🌐 Mainnet: wss://xahau.network\n🧪 Testnet: wss://xahau-test.net\n\nJSON-RPC API for all queries",
             jp: "パブリックノードへのWebSocket接続\n\n🌐 メインネット：wss://xahau.network\n🧪 テストネット：wss://xahau-test.net\n\nすべての照会にJSON-RPC API",
             ko: "공용 노드에 WebSocket으로 연결\n\n🌐 Mainnet: wss://xahau.network\n🧪 Testnet: wss://xahau-test.net\n\n모든 조회에 사용하는 JSON-RPC API",
+            zh: "通过 WebSocket 连接到公共节点\n\n🌐 主网: wss://xahau.network\n🧪 测试网: wss://xahau-test.net\n\n所有查询都通过 JSON-RPC API 完成",
           },
           visual: "🔌",
         },
         {
-          title: { es: "Comandos principales", en: "Main commands", jp: "主要なコマンド", ko: "주요 명령" },
+          title: { es: "Comandos principales", en: "Main commands", jp: "主要なコマンド", ko: "주요 명령", zh: "主要命令" },
           content: {
             es: "• server_info → Estado del nodo\n• account_info → Datos de cuenta\n• account_lines → TrustLines\n• account_objects → Objetos de la cuenta\n• account_tx → Historial de transacciones\n• ledger → Info del ledger",
             en: "• server_info → Node status\n• account_info → Account data\n• account_lines → TrustLines\n• account_objects → Account objects\n• account_tx → Transaction history\n• ledger → Ledger info",
             jp: "• server_info → ノードの状態\n• account_info → アカウントデータ\n• account_lines → TrustLine\n• account_objects → アカウントオブジェクト\n• account_tx → トランザクション履歴\n• ledger → レジャー情報",
             ko: "• server_info → 노드 상태\n• account_info → 계정 데이터\n• account_lines → TrustLine\n• account_objects → 계정 객체\n• account_tx → 트랜잭션 기록\n• ledger → Ledger 정보",
+            zh: "• server_info → 节点状态\n• account_info → 账户数据\n• account_lines → TrustLines\n• account_objects → 账户对象\n• account_tx → 交易历史\n• ledger → 账本信息",
           },
           visual: "📡",
         },
         {
-          title: { es: "Buenas prácticas de conexión", en: "Connection best practices", jp: "接続のベストプラクティス", ko: "연결 모범 사례" },
+          title: { es: "Buenas prácticas de conexión", en: "Connection best practices", jp: "接続のベストプラクティス", ko: "연결 모범 사례", zh: "连接最佳实践" },
           content: {
             es: "• Envuelve conexiones en try/catch\n• Implementa reconexión automática\n• Escucha el evento 'disconnected'\n• Testnet para desarrollo, Mainnet para producción\n• Configura timeouts razonables\n• Valida respuestas antes de procesar",
             en: "• Wrap connections in try/catch\n• Implement automatic reconnection\n• Listen for the 'disconnected' event\n• Testnet for development, Mainnet for production\n• Configure reasonable timeouts\n• Validate responses before processing",
             jp: "• try/catchで接続をラップする\n• 自動再接続を実装する\n• 'disconnected'イベントをリッスンする\n• 開発にはTestnet、本番にはMainnet\n• 適切なタイムアウトを設定する\n• 処理前にレスポンスを検証する",
             ko: "• 연결 로직을 try/catch로 감싸기\n• 자동 재연결 구현\n• 'disconnected' 이벤트 감지\n• 개발은 Testnet, 운영은 Mainnet 사용\n• 적절한 timeout 설정\n• 처리 전에 응답 검증",
+            zh: "• 用 try/catch 包裹连接逻辑\n• 实现自动重连\n• 监听 'disconnected' 事件\n• 开发用 Testnet，生产用 Mainnet\n• 设置合理的 timeout\n• 处理前先验证响应",
           },
           visual: "🛡️",
         },
@@ -501,6 +504,7 @@ getAccountInfo("rYourAddressHere");`,
         en: "Advanced queries and subscriptions",
         jp: "高度な照会とサブスクリプション",
         ko: "고급 조회와 구독",
+        zh: "高级查询与订阅",
       },
       theory: {
         es: `Más allá de las consultas básicas, Xahau permite consultar objetos específicos del ledger, el historial de transacciones de una cuenta y suscribirse a eventos en tiempo real.
@@ -603,6 +607,31 @@ You can query the details of a specific transaction using its **hash** with the 
 ### 개별 트랜잭션 조회
 
 \`tx\` 명령을 사용하면 **해시**로 특정 트랜잭션의 상세 정보를 조회할 수 있습니다.`,
+        zh: `除了基础查询外，Xahau 还允许你查询特定账本对象、某个账户的交易历史，并订阅实时事件。
+
+### 交易历史
+
+\`account_tx\` 命令会返回与某个账户相关的交易。你可以使用 \`marker\` 字段对结果进行分页。
+
+### 账户对象
+
+\`account_objects\` 命令会返回与某个账户关联的所有账本对象：
+- TrustLines
+- Offers（DEX 订单）
+- URITokens（NFT）
+- 已安装的 Hooks
+- Hook 状态
+
+### 实时订阅
+
+通过 \`subscribe\` 命令，你可以在事件发生时收到通知：
+- **ledger**：每次有新账本关闭时通知
+- **transactions**：网络中的所有交易
+- **accounts**：影响特定账户的交易
+
+### 查询单笔交易
+
+你可以使用 \`tx\` 命令，通过交易的 **hash** 查询某一笔交易的详细信息。`,
       },
       codeBlocks: [
         {
@@ -611,6 +640,7 @@ You can query the details of a specific transaction using its **hash** with the 
             en: "Query an account's transaction history",
             jp: "アカウントのトランザクション履歴を照会する",
             ko: "계정 트랜잭션 기록 조회",
+            zh: "查询账户交易历史",
           },
           language: "javascript",
           code: {
@@ -746,6 +776,39 @@ async function getAccountTransactions(address) {
 }
 //예시 주소: rDADDYfnLvVY9FBnS8zFXhwYFHPuU5q2Sk
 getAccountTransactions("rYourAddressHere");`,
+            zh: `const { Client } = require("xahau");
+
+async function getAccountTransactions(address) {
+  const client = new Client("wss://xahau-test.net");
+  await client.connect();
+
+  const response = await client.request({
+    command: "account_tx",
+    account: address,
+    ledger_index_min: -1,
+    ledger_index_max: -1,
+    limit: 10,
+  });
+
+  console.log("=== 最近交易 ===");
+  for (const item of response.result.transactions) {
+    const tx = item.tx;
+    console.log(\`类型: \${tx.TransactionType}\`);
+    console.log(\`  Hash: \${item.tx.hash}\`);
+    console.log(\`  日期: \${new Date((tx.date + 946684800) * 1000).toISOString()}\`);
+    console.log(\`  结果: \${item.meta.TransactionResult}\`);
+
+    if (tx.TransactionType === "Payment") {
+      console.log(\`  从: \${tx.Account}\`);
+      console.log(\`  到: \${tx.Destination}\`);
+      console.log(\`  金额: \${Number(tx.Amount) / 1_000_000} XAH\`);
+    }
+  }
+
+  await client.disconnect();
+}
+//示例地址: rDADDYfnLvVY9FBnS8zFXhwYFHPuU5q2Sk
+getAccountTransactions("rYourAddressHere");`,
           },
         },
         {
@@ -754,6 +817,7 @@ getAccountTransactions("rYourAddressHere");`,
             en: "Query account objects and subscribe to events",
             jp: "アカウントオブジェクトの照会とイベントのサブスクリプション",
             ko: "계정 객체 조회와 이벤트 구독",
+            zh: "查询账户对象并订阅事件",
           },
           language: "javascript",
           code: {
@@ -929,37 +993,83 @@ async function getAccountObjects(address) {
 }
 //예시 주소: rDADDYfnLvVY9FBnS8zFXhwYFHPuU5q2Sk
 getAccountObjects("rYourAddressHere");`,
+            zh: `const { Client } = require("xahau");
+
+async function getAccountObjects(address) {
+  const client = new Client("wss://xahau-test.net");
+  await client.connect();
+
+  // 查询该账户的所有对象
+  const response = await client.request({
+    command: "account_objects",
+    account: address,
+    ledger_index: "validated",
+  });
+
+  console.log("=== 账户对象 ===");
+  for (const obj of response.result.account_objects) {
+    console.log(\`类型: \${obj.LedgerEntryType}\`);
+
+    if (obj.LedgerEntryType === "RippleState") {
+      console.log(\`  代币: \${obj.Balance.currency}\`);
+      console.log(\`  余额: \${obj.Balance.value}\`);
+    } else if (obj.LedgerEntryType === "URIToken") {
+      console.log(\`  URI: \${obj.URI}\`);
+    }
+  }
+
+  // 订阅该账户的交易
+  console.log("已订阅该账户的交易...");
+  await client.request({
+    command: "subscribe",
+    accounts: [address]
+  });
+
+  client.on("transaction", (tx) => {
+    console.log("检测到新交易！");
+    console.log("类型:", tx.transaction.TransactionType);
+    console.log("结果:", tx.meta.TransactionResult);
+  });
+
+  // 保持连接 60 秒
+  setTimeout(() => client.disconnect(), 60000);
+}
+//示例地址: rDADDYfnLvVY9FBnS8zFXhwYFHPuU5q2Sk
+getAccountObjects("rYourAddressHere");`,
           },
         },
       ],
       slides: [
         {
-          title: { es: "Historial de transacciones", en: "Transaction history", jp: "トランザクション履歴", ko: "트랜잭션 기록" },
+          title: { es: "Historial de transacciones", en: "Transaction history", jp: "トランザクション履歴", ko: "트랜잭션 기록", zh: "交易历史" },
           content: {
             es: "account_tx → Historial de una cuenta\n\n• Paginar con marker\n• Filtrar por tipo de transacción\n• Ver resultados (éxito/fallo)\n• Consultar metadatos detallados",
             en: "account_tx → Account history\n\n• Paginate with marker\n• Filter by transaction type\n• View results (success/failure)\n• Query detailed metadata",
             jp: "account_tx → アカウントの履歴\n\n• markerでページング\n• トランザクションタイプでフィルタリング\n• 結果を確認（成功/失敗）\n• 詳細なメタデータを照会",
             ko: "account_tx → 계정 기록\n\n• marker로 페이지네이션\n• 트랜잭션 유형별 필터링\n• 결과 확인(성공/실패)\n• 상세 메타데이터 조회",
+            zh: "account_tx → 账户历史\n\n• 使用 marker 分页\n• 按交易类型过滤\n• 查看结果（成功/失败）\n• 查询详细 metadata",
           },
           visual: "📜",
         },
         {
-          title: { es: "Tiempo real", en: "Real time", jp: "リアルタイム", ko: "실시간" },
+          title: { es: "Tiempo real", en: "Real time", jp: "リアルタイム", ko: "실시간", zh: "实时" },
           content: {
             es: "subscribe → Eventos en tiempo real\n\n• ledger → Cierre de ledgers\n• transactions → Todas las txs\n• accounts → Txs de cuentas específicas\n\nIdeal para monitorizar actividad",
             en: "subscribe → Real-time events\n\n• ledger → Ledger closings\n• transactions → All txs\n• accounts → Txs for specific accounts\n\nIdeal for monitoring activity",
             jp: "subscribe → リアルタイムイベント\n\n• ledger → レジャーのクローズ\n• transactions → すべてのtx\n• accounts → 特定アカウントのtx\n\nアクティビティの監視に最適",
             ko: "subscribe → 실시간 이벤트\n\n• ledger → ledger 닫힘 알림\n• transactions → 모든 tx\n• accounts → 특정 계정 tx\n\n활동 모니터링에 적합",
+            zh: "subscribe → 实时事件\n\n• ledger → 账本关闭通知\n• transactions → 所有交易\n• accounts → 特定账户的交易\n\n非常适合监控活动",
           },
           visual: "⚡",
         },
         {
-          title: { es: "Suscripciones en detalle", en: "Subscriptions in detail", jp: "サブスクリプションの詳細", ko: "구독 상세" },
+          title: { es: "Suscripciones en detalle", en: "Subscriptions in detail", jp: "サブスクリプションの詳細", ko: "구독 상세", zh: "订阅详解" },
           content: {
             es: "Comando subscribe para eventos en tiempo real:\n\n• Evento ledger → Nuevo ledger cerrado\n• Evento transaction → Tx confirmada\n• Escucha con client.on('transaction')\n• unsubscribe para dejar de escuchar\n• Mantén la conexión WebSocket abierta",
             en: "subscribe command for real-time events:\n\n• ledger event → New ledger closed\n• transaction event → Tx confirmed\n• Listen with client.on('transaction')\n• unsubscribe to stop listening\n• Keep the WebSocket connection open",
             jp: "リアルタイムイベントのsubscribeコマンド：\n\n• ledgerイベント → 新しいレジャーがクローズ\n• transactionイベント → txが確認済み\n• client.on('transaction')でリッスン\n• unsubscribeでリッスン停止\n• WebSocket接続を開いたままにする",
             ko: "실시간 이벤트용 subscribe 명령:\n\n• ledger 이벤트 → 새 ledger 닫힘\n• transaction 이벤트 → tx 확인\n• client.on('transaction')로 수신\n• unsubscribe로 중지\n• WebSocket 연결을 계속 유지",
+            zh: "用于实时事件的 subscribe 命令：\n\n• ledger 事件 → 新账本关闭\n• transaction 事件 → 交易已确认\n• 用 client.on('transaction') 监听\n• 使用 unsubscribe 停止监听\n• 保持 WebSocket 连接处于打开状态",
           },
           visual: "📡",
         },
@@ -972,6 +1082,7 @@ getAccountObjects("rYourAddressHere");`,
         en: "Pagination and error handling",
         jp: "ページネーションとエラー処理",
         ko: "페이지네이션과 오류 처리",
+        zh: "分页与错误处理",
       },
       theory: {
         es: `Cuando trabajas con la API de Xahau, es fundamental dominar dos aspectos: la **paginación** de resultados grandes y el **manejo de errores** para construir aplicaciones robustas.
@@ -1094,6 +1205,36 @@ Many API commands return paginated results. When there is more data than fits in
 - **연결 끊김 처리**: 클라이언트의 \`disconnected\` 이벤트를 감지하고 자동 재연결합니다
 - **Rate limiting 고려**: 공용 노드는 요청을 제한할 수 있으므로 대량 요청 사이에 간격을 둡니다
 - **Timeout 설정**: 애플리케이션이 멈추지 않도록 적절한 timeout을 설정합니다`,
+        zh: `在使用 Xahau API 时，有两个方面尤其重要：处理大结果集时的**分页**，以及构建稳健应用所需的**错误处理**。
+
+### marker 系统
+
+很多 API 命令返回的是分页结果。当数据量超过单次响应可容纳的范围时，API 会在结果中包含一个 \`marker\` 字段。要获取下一页，你必须发送同一个命令，并带上这个 \`marker\`。
+
+- \`limit\` 字段控制每页返回多少结果（最大值视命令而定，通常为 200 到 400）
+- 如果响应中包含 \`marker\`，说明后面还有更多页面
+- 如果响应中没有 \`marker\`，说明已经到最后一页
+- \`marker\` 的值是不透明的：不要修改它，直接原样传回即可
+
+### 常见 API 错误
+
+| Error | 含义 |
+|---|---|
+| \`actNotFound\` | 查询的账户在账本中不存在 |
+| \`lgrNotFound\` | 请求的账本未找到 |
+| \`invalidParams\` | 请求参数不正确 |
+| \`noCurrent\` | 服务器当前没有可用账本 |
+| \`noNetwork\` | 服务器未连接到网络 |
+| \`tooBusy\` | 服务器负载过高 |
+
+### 最佳实践
+
+- **始终用 try/catch 包裹请求**：网络错误、timeout 和 API 错误都必须处理
+- **实现重试机制**：对于 \`tooBusy\` 或 timeout 这类瞬时错误，使用指数退避重试
+- **验证响应内容**：在处理数据前先确认 \`result.status === "success"\`
+- **处理断线情况**：监听客户端的 \`disconnected\` 事件并自动重连
+- **考虑速率限制**：公共节点可能会限制请求频率，批量请求之间应适当暂停
+- **设置合理 timeout**：防止应用程序长时间卡住`,
       },
       codeBlocks: [
         {
@@ -1102,6 +1243,7 @@ Many API commands return paginated results. When there is more data than fits in
             en: "Paginate all account objects using marker",
             jp: "markerを使用してアカウントのすべてのオブジェクトをページングする",
             ko: "marker로 계정 객체 전체 페이지네이션",
+            zh: "使用 marker 分页获取账户全部对象",
           },
           language: "javascript",
           code: {
@@ -1341,37 +1483,99 @@ async function getAllAccountObjects(address) {
 }
 //예시 계정: rHh1YJN4kwRdw4Y29Xu1EY9qW8u36vAYLc
 getAllAccountObjects("rYourAddressHere");`,
+            zh: `const { Client } = require("xahau");
+
+async function getAllAccountObjects(address) {
+  const client = new Client("wss://xahau-test.net");
+  await client.connect();
+
+  let allObjects = [];
+  let marker = undefined;
+  let page = 1;
+
+  console.log("=== 正在获取", address, "的全部对象 ===");
+
+  do {
+    const request = {
+      command: "account_objects",
+      account: address,
+      ledger_index: "validated",
+      limit: 100,
+    };
+
+    // 只有 marker 存在时才加入（第一次请求不加）
+    if (marker) {
+      request.marker = marker;
+    }
+
+    const response = await client.request(request);
+    const objects = response.result.account_objects;
+    allObjects = allObjects.concat(objects);
+
+    console.log(\`第 \${page} 页: 收到 \${objects.length} 个对象\`);
+
+    // 更新下一页所需的 marker
+    marker = response.result.marker;
+    page++;
+
+    // 短暂停顿，避免压垮节点
+    if (marker) {
+      await new Promise((resolve) => setTimeout(resolve, 200));
+    }
+  } while (marker);
+
+  console.log(\`总共获取对象数: \${allObjects.length}\`);
+
+  // 按类型分组
+  const byType = {};
+  for (const obj of allObjects) {
+    const type = obj.LedgerEntryType;
+    byType[type] = (byType[type] || 0) + 1;
+  }
+
+  console.log("按类型汇总:");
+  for (const [type, count] of Object.entries(byType)) {
+    console.log(\`  \${type}: \${count}\`);
+  }
+
+  await client.disconnect();
+}
+//示例账户: rHh1YJN4kwRdw4Y29Xu1EY9qW8u36vAYLc
+getAllAccountObjects("rYourAddressHere");`,
           },
         },
       ],
       slides: [
         {
-          title: { es: "Paginación con marker", en: "Pagination with marker", jp: "markerによるページネーション", ko: "marker 페이지네이션" },
+          title: { es: "Paginación con marker", en: "Pagination with marker", jp: "markerによるページネーション", ko: "marker 페이지네이션", zh: "使用 marker 分页" },
           content: {
             es: "Cuando hay muchos resultados, la API pagina:\n\n1. Envía tu consulta con limit\n2. Si la respuesta tiene marker, hay más datos\n3. Reenvía la consulta incluyendo el marker\n4. Repite hasta que no haya marker\n\nNunca modifiques el valor del marker",
             en: "When there are many results, the API paginates:\n\n1. Send your query with limit\n2. If the response has a marker, there is more data\n3. Resend the query including the marker\n4. Repeat until there is no marker\n\nNever modify the marker value",
             jp: "多くの結果がある場合、APIはページングします：\n\n1. limitをつけてクエリを送信\n2. レスポンスにmarkerがあればデータが続く\n3. markerを含めてクエリを再送信\n4. markerがなくなるまで繰り返す\n\nmarkerの値を絶対に変更しない",
             ko: "결과가 많으면 API가 페이지를 나눕니다:\n\n1. limit와 함께 요청 전송\n2. 응답에 marker가 있으면 다음 데이터 존재\n3. marker를 포함해 다시 요청\n4. marker가 없어질 때까지 반복\n\nmarker 값은 절대 수정하지 마세요",
+            zh: "当结果很多时，API 会分页：\n\n1. 带上 limit 发送请求\n2. 如果响应里有 marker，说明还有更多数据\n3. 带着 marker 再发一次请求\n4. 重复直到 marker 消失\n\n永远不要修改 marker 的值",
           },
           visual: "📄",
         },
         {
-          title: { es: "Errores comunes", en: "Common errors", jp: "よくあるエラー", ko: "흔한 오류" },
+          title: { es: "Errores comunes", en: "Common errors", jp: "よくあるエラー", ko: "흔한 오류", zh: "常见错误" },
           content: {
             es: "• actNotFound → Cuenta no existe\n• lgrNotFound → Ledger no encontrado\n• invalidParams → Parámetros incorrectos\n• noCurrent → Sin ledger actual\n• noNetwork → Sin conexión a la red\n• tooBusy → Servidor sobrecargado",
             en: "• actNotFound → Account does not exist\n• lgrNotFound → Ledger not found\n• invalidParams → Incorrect parameters\n• noCurrent → No current ledger\n• noNetwork → No network connection\n• tooBusy → Server overloaded",
             jp: "• actNotFound → アカウントが存在しない\n• lgrNotFound → レジャーが見つからない\n• invalidParams → パラメータが正しくない\n• noCurrent → 現在のレジャーなし\n• noNetwork → ネットワーク接続なし\n• tooBusy → サーバーが過負荷",
             ko: "• actNotFound → 계정이 존재하지 않음\n• lgrNotFound → ledger를 찾지 못함\n• invalidParams → 잘못된 파라미터\n• noCurrent → 현재 ledger 없음\n• noNetwork → 네트워크 연결 없음\n• tooBusy → 서버 과부하",
+            zh: "• actNotFound → 账户不存在\n• lgrNotFound → 未找到账本\n• invalidParams → 参数错误\n• noCurrent → 当前没有账本\n• noNetwork → 未连接到网络\n• tooBusy → 服务器过载",
           },
           visual: "⚠️",
         },
         {
-          title: { es: "Buenas prácticas", en: "Best practices", jp: "ベストプラクティス", ko: "모범 사례" },
+          title: { es: "Buenas prácticas", en: "Best practices", jp: "ベストプラクティス", ko: "모범 사례", zh: "最佳实践" },
           content: {
             es: "• Siempre usar try/catch en las peticiones\n• Reintentar con backoff exponencial\n• Validar result.status === 'success'\n• Escuchar evento 'disconnected'\n• Pausar entre peticiones masivas\n• Configurar timeouts razonables",
             en: "• Always use try/catch for requests\n• Retry with exponential backoff\n• Validate result.status === 'success'\n• Listen for the 'disconnected' event\n• Pause between bulk requests\n• Configure reasonable timeouts",
             jp: "• リクエストには常にtry/catchを使用\n• 指数バックオフでリトライする\n• result.status === 'success'を検証する\n• 'disconnected'イベントをリッスンする\n• 大量リクエスト間に間隔を設ける\n• 適切なタイムアウトを設定する",
             ko: "• 요청은 항상 try/catch 사용\n• 지수 백오프로 재시도\n• result.status === 'success' 검증\n• 'disconnected' 이벤트 감지\n• 대량 요청 사이에 잠시 대기\n• 적절한 timeout 설정",
+            zh: "• 请求始终放在 try/catch 中\n• 用指数退避重试\n• 验证 result.status === 'success'\n• 监听 'disconnected' 事件\n• 批量请求之间稍作暂停\n• 设置合理 timeout",
           },
           visual: "🛡️",
         },
@@ -1384,6 +1588,7 @@ getAllAccountObjects("rYourAddressHere");`,
         en: "Working with ledger objects",
         jp: "レジャーオブジェクトの操作",
         ko: "레저 객체 다루기",
+        zh: "处理账本对象",
       },
       theory: {
         es: `El ledger de Xahau almacena toda la información en forma de **objetos** (ledger entries). Cada objeto tiene un tipo, un índice único (hash) y campos específicos. En esta lección aprenderemos a consultar y trabajar con estos objetos directamente.
@@ -1514,6 +1719,38 @@ ledger의 각 객체는 식별 데이터에서 계산되는 SHA-512Half hash 기
 - RippleState 인덱스는 두 계정과 통화 정보에서 계산됩니다
 
 이 인덱스는 결정적이므로 입력 데이터를 알고 있으면 언제든지 다시 계산할 수 있습니다.`,
+        zh: `Xahau 的账本会把所有信息存储为**对象**（ledger entries）。每个对象都有类型、唯一索引（hash）以及专属字段。在这一课里，我们会学习如何直接查询和处理这些对象。
+
+### ledger_entry 命令
+
+使用 \`ledger_entry\`，你可以通过对象的**索引**（64 个十六进制字符的 hash）查询账本中的某个特定对象。当你已经知道对象的精确标识符时，这个命令非常有用。
+
+### 可查询的对象类型
+
+| 类型 | 说明 |
+|---|---|
+| \`AccountRoot\` | 账户的主要数据 |
+| \`RippleState\` | 两个账户之间的 trust line |
+| \`Offer\` | DEX 上的活跃订单 |
+| \`URIToken\` | 非同质化代币（Xahau NFT） |
+| \`Hook\` | 已安装 Hook 的定义 |
+| \`HookState\` | Hook 存储的状态 |
+
+### 带类型过滤的 account_objects 命令
+
+\`account_objects\` 命令接受 \`type\` 参数，用来只筛选某一类对象。有效值包括：
+- \`"state"\` → RippleState（trust lines）
+- \`"offer"\` → Offers（DEX 订单）
+- \`"uri_token"\` → URITokens
+- \`"hook"\` → 已安装 Hooks
+
+### 理解 ledger 索引
+
+账本中的每个对象都拥有一个**唯一索引**，它是根据对象的标识数据通过 SHA-512Half 哈希计算出来的。例如：
+- AccountRoot 的索引由账户地址计算得到
+- RippleState 的索引由两个账户和货币共同计算得到
+
+这些索引是确定性的：只要你知道输入数据，就可以随时重新计算出来。`,
       },
       codeBlocks: [
 
@@ -1523,6 +1760,7 @@ ledger의 각 객체는 식별 데이터에서 계산되는 SHA-512Half hash 기
             en: "Query account_objects filtered by type",
             jp: "タイプでフィルタリングされたaccount_objectsを照会する",
             ko: "type으로 필터링한 account_objects 조회",
+            zh: "按类型过滤查询 account_objects",
           },
           language: "javascript",
           code: {
@@ -1810,27 +2048,100 @@ getObjectsByType("rDk1xiArDMjDqnrR2yWypwQAKg4mKnQYvs", "state");
 
 // URIToken 보기
 // getObjectsByType("rfPMnDQEzb5StPXj3Dkd34oKY4BVAJCwsn", "uri_token");`,
+            zh: `const { Client } = require("xahau");
+
+async function getObjectsByType(address, type) {
+  const client = new Client("wss://xahau.network");
+  await client.connect();
+
+  let allObjects = [];
+  let marker = undefined;
+
+  do {
+    const request = {
+      command: "account_objects",
+      account: address,
+      type: type,
+      ledger_index: "validated",
+      limit: 100,
+    };
+    if (marker) request.marker = marker;
+
+    const response = await client.request(request);
+    allObjects = allObjects.concat(response.result.account_objects);
+    marker = response.result.marker;
+  } while (marker);
+
+  console.log(\`=== \${type.toUpperCase()} for \${address} ===\`);
+  console.log(\`总数: \${allObjects.length}\`);
+
+  for (const obj of allObjects) {
+    switch (type) {
+      case "state": // RippleState (trust lines)
+        const currency = obj.Balance.currency;
+        const balance = obj.Balance.value;
+        const peer = obj.HighLimit.issuer === address
+          ? obj.LowLimit.issuer
+          : obj.HighLimit.issuer;
+        console.log(\`  \${currency}: 余额 \${balance} (对手方: \${peer})\`);
+        break;
+
+      case "offer":
+        const pays = typeof obj.TakerPays === "string"
+          ? \`\${Number(obj.TakerPays) / 1_000_000} XAH\`
+          : \`\${obj.TakerPays.value} \${obj.TakerPays.currency}\`;
+        const gets = typeof obj.TakerGets === "string"
+          ? \`\${Number(obj.TakerGets) / 1_000_000} XAH\`
+          : \`\${obj.TakerGets.value} \${obj.TakerGets.currency}\`;
+        console.log(\`  Offer: 支付 \${pays} → 获得 \${gets}\`);
+        break;
+
+      case "uri_token":
+        const uri = Buffer.from(obj.URI || "", "hex").toString("utf8");
+        console.log(\`  URIToken: \${uri}\`);
+        console.log(\`    索引: \${obj.index}\`);
+        break;
+
+      default:
+        console.log(\`  \${obj.LedgerEntryType}: \${obj.index}\`);
+    }
+  }
+
+  await client.disconnect();
+}
+
+// 使用示例:
+// 查看 trust lines
+getObjectsByType("rDk1xiArDMjDqnrR2yWypwQAKg4mKnQYvs", "state");
+
+// 查看 DEX 订单
+// getObjectsByType("rfmPQz4eSmisCVnWJkKj82hHKQdrUPv3Px", "offer");
+
+// 查看 URITokens
+// getObjectsByType("rfPMnDQEzb5StPXj3Dkd34oKY4BVAJCwsn", "uri_token");`,
           },
         },
       ],
       slides: [
         {
-          title: { es: "Objetos del ledger", en: "Ledger objects", jp: "レジャーオブジェクト", ko: "레저 객체" },
+          title: { es: "Objetos del ledger", en: "Ledger objects", jp: "レジャーオブジェクト", ko: "레저 객체", zh: "账本对象" },
           content: {
             es: "Todo en Xahau se almacena como objetos:\n\n• AccountRoot → Datos de cuenta\n• RippleState → Trust lines\n• Offer → Órdenes DEX\n• URIToken → NFTs\n• Hook → Hooks instalados\n\nCada objeto tiene un índice único (hash)",
             en: "Everything in Xahau is stored as objects:\n\n• AccountRoot → Account data\n• RippleState → Trust lines\n• Offer → DEX orders\n• URIToken → NFTs\n• Hook → Installed Hooks\n\nEach object has a unique index (hash)",
             jp: "Xahauのすべてはオブジェクトとして保存される：\n\n• AccountRoot → アカウントデータ\n• RippleState → トラストライン\n• Offer → DEXの注文\n• URIToken → NFT\n• Hook → インストールされたHook\n\n各オブジェクトは一意のインデックス（ハッシュ）を持つ",
             ko: "Xahau의 모든 것은 객체로 저장됩니다:\n\n• AccountRoot → 계정 데이터\n• RippleState → Trust line\n• Offer → DEX 주문\n• URIToken → NFT\n• Hook → 설치된 Hook\n\n각 객체는 고유 인덱스(hash)를 가집니다",
+            zh: "Xahau 中的一切都以对象形式存储：\n\n• AccountRoot → 账户数据\n• RippleState → Trust lines\n• Offer → DEX 订单\n• URIToken → NFT\n• Hook → 已安装 Hooks\n\n每个对象都有唯一索引（hash）",
           },
           visual: "🗂️",
         },
         {
-          title: { es: "Consultas por tipo", en: "Queries by type", jp: "タイプ別照会", ko: "유형별 조회" },
+          title: { es: "Consultas por tipo", en: "Queries by type", jp: "タイプ別照会", ko: "유형별 조회", zh: "按类型查询" },
           content: {
             es: "account_objects + type = filtro eficiente\n\n• type: 'state' → Trust lines\n• type: 'offer' → Órdenes DEX\n• type: 'uri_token' → NFTs\n• type: 'hook' → Hooks\n\nCombina con marker para paginar",
             en: "account_objects + type = efficient filtering\n\n• type: 'state' → Trust lines\n• type: 'offer' → DEX orders\n• type: 'uri_token' → NFTs\n• type: 'hook' → Hooks\n\nCombine with marker to paginate",
             jp: "account_objects + type = 効率的なフィルタリング\n\n• type: 'state' → トラストライン\n• type: 'offer' → DEXの注文\n• type: 'uri_token' → NFT\n• type: 'hook' → Hook\n\nmarkerと組み合わせてページングする",
             ko: "account_objects + type = 효율적인 필터링\n\n• type: 'state' → Trust line\n• type: 'offer' → DEX 주문\n• type: 'uri_token' → NFT\n• type: 'hook' → Hook\n\nmarker와 함께 사용해 페이지네이션",
+            zh: "account_objects + type = 高效过滤\n\n• type: 'state' → Trust lines\n• type: 'offer' → DEX 订单\n• type: 'uri_token' → NFT\n• type: 'hook' → Hooks\n\n可与 marker 结合进行分页",
           },
           visual: "🔎",
         },

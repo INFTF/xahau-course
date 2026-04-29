@@ -8,6 +8,15 @@ export default defineConfig({
     open: true
   },
   build: {
-    outDir: 'dist'
+    outDir: 'dist',
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('/src/data/modules/')) {
+            return id.split('/').pop().replace('.js', '')
+          }
+        },
+      },
+    },
   }
 })

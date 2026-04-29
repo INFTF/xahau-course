@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import Markdown from './Markdown'
 import CodeBlock from './CodeBlock'
+import LanguageSelect from './LanguageSelect'
 
 export default function LessonView({
   module: mod,
@@ -51,22 +52,7 @@ export default function LessonView({
               ← <span className="hidden sm:inline">{labels.allModules}</span>
             </button>
             <div className="flex items-center gap-2 flex-wrap justify-end">
-              {/* Language selector */}
-              <div className="flex rounded-lg overflow-hidden" style={{ border: '1px solid var(--color-border)' }}>
-                {['en', 'es', 'jp', 'ko', 'zh'].map((l) => (
-                  <button
-                    key={l}
-                    onClick={() => setLang(l)}
-                    className="px-2.5 py-1 text-xs font-bold uppercase transition-all"
-                    style={{
-                      background: lang === l ? 'var(--color-accent)' : 'transparent',
-                      color: lang === l ? '#000' : 'var(--color-text-dim)',
-                    }}
-                  >
-                    {l === 'jp' ? '日本語' : l === 'ko' ? '한국어' : l === 'zh' ? '中文' : l.toUpperCase()}
-                  </button>
-                ))}
-              </div>
+              <LanguageSelect lang={lang} setLang={setLang} label={labels.language} compact />
               {/* GitHub link */}
               <a
                 href="https://github.com/INFTF/xahau-course"

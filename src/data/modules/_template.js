@@ -18,6 +18,7 @@ export default {
   icon: "🔮",          // Emoji icon for the module card
   title: {
     es: "Título del Módulo",
+    pt: "Título do Módulo",
     en: "Module Title",
     jp: "モジュールタイトル",
   },
@@ -26,6 +27,7 @@ export default {
       id: "mXXl1",     // Unique lesson id
       title: {
         es: "Título de la lección",
+        pt: "Título da lição",
         en: "Lesson Title",
         jp: "レッスンタイトル",
       },
@@ -37,6 +39,11 @@ export default {
 - Punto 2
 
 Texto con **negrita** y \`código inline\`.`,
+        pt: `Contenido teórico em español.
+### Subtítulo
+- Punto 1
+- Punto 2
+Texto com **negrita** e \`código inline\`.`,
         en: `Theory content in English.
 
 ### Subtitle
@@ -56,6 +63,7 @@ Text with **bold** and \`inline code\`.`,
         {
           title: {
             es: "Ejemplo de código",
+            pt: "Exemplo de código",
             en: "Code example",
             jp: "コード例",
           },
@@ -68,11 +76,13 @@ console.log("Hello Xahau!");`,
         {
           title: {
             es: "Título del slide",
+            pt: "Título do slide",
             en: "Slide Title",
             jp: "スライドタイトル",
           },
           content: {
             es: "Contenido del slide\n\n• Punto clave 1\n• Punto clave 2",
+            pt: "Conteúdo do slide\n\n• Punto chave 1\n• Punto chave 2",
             en: "Slide content\n\n• Key point 1\n• Key point 2",
             jp: "スライド内容\n\n• キーポイント1\n• キーポイント2",
           },

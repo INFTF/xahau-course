@@ -3,6 +3,7 @@ export default {
   icon: "🔑",
   title: {
     es: "Integración con Xaman (XUMM SDK)",
+    pt: "Integração com Xaman (XUMM SDK)",
     en: "Xaman Integration (XUMM SDK)",
     jp: "Xaman連携（XUMM SDK）",
     ko: "Xaman 통합 (XUMM SDK)",
@@ -13,6 +14,7 @@ export default {
       id: "m11l1",
       title: {
         es: "El SDK de Xaman y el portal de desarrolladores",
+        pt: "O SDK de Xaman e o portal de desenvolvedores",
         en: "The Xaman SDK and developer portal",
         jp: "Xaman SDKと開発者ポータル",
         ko: "Xaman SDK와 개발자 포털",
@@ -85,6 +87,56 @@ Tu app                  Xaman API             Xaman (móvil)
   │◀── WebSocket: signed ───│◀── Usuario firma ────│
   │                         │                      │
   │── Verificar en ledger   │                      │
+\`\`\``,
+        pt: `**Xaman** (anteriormente XUMM) não é apenas uma wallet: é uma plataforma de assinatura de transações que expõe uma **API REST e SDK** para desenvolvedores. Graças a ela você pode criar aplicações web ou móveis que pedem ao usuário que firme transações na Xahau sem que nunca tenha acesso às suas chaves privadas.
+### O que é ou XUMM SDK?
+O pacote **xumm** (npm) é o SDK oficial que facilita a integração com a API de Xaman. Com ele você pode:
+- Autenticar usuários por meio de um **SignIn** que o usuário assina em seu celular
+- Criar **payloads** (solicitações de assinatura) com qualquer tipo de transação de Xahau
+- Mostrar um **código QR** que o usuário escaneia com a app Xaman
+- Recibir em tempo real a respuesta (firmadao rejeitada) por meio de WebSocket
+- Verificar que a transação foi incluída no ledger
+### Obter seus credenciais API
+Antes de escrever código você precisa acceder ao **portal de desenvolvedores**:
+1. Ve a [apps.xaman.dev](https://apps.xaman.dev) e inicia sessão com sua conta de Xaman
+2. Clique em **"Create new application"**
+3. Preencha o nome, descrição e ícone da sua aplicação e pressione **Create application**.
+4. Copia tu **API Key** (pública) e tu **API Secret** (privada)
+**Importante**: O API Secret é como uma senha. **Nunca o inclua em código frontend** que se entregue ao navegador. Use-o apenas em seu servidor.
+### Panel de control de desenvolvedores
+O dashboard de apps.xaman.dev te permite:
+- **App details**: Nombre, descrição, URL do icono
+- **Origin/redirect URLs**: Lista blanca de dominios que podem usar tu API Key
+- **Webhook URL**: Endpoint de tu servidor em que Xaman enviará notificações de assinatura
+- **Estadísticas**: Número de payloads criados, firmados e rejeitados
+- **Logs**: Histourico de llamadas à API para debugging
+### Revisar a documentacioun oficial
+A documentacioun completa está em **docs.xumm.dev**:
+- **Concepts** → entiende qué é um payload, o fluxo de assinatura, os estados posibles
+- **SDK Reference** → todos os métodos do SDK com ejemplos
+- **API Reference** → documentacioun dos endpoints REST diretos
+- **Examples** → proyectos de exemplo em GitHub
+### Conceptos chave antes de programar
+| Concepto | Descrição |
+|----------|-------------|
+| **Payload** | Uma solicitud de assinatura: contem a transação a assinar |
+| **UUID** | Identificador único de cada payload |
+| **QR / Deep link** | Formas de enviar o payload ao usuário |
+| **SignIn** | Transação especial para autenticar (no cuesta fees) |
+| **Webhook** | Notificacioun HTTP que Xaman envia quando o usuário assina |
+### Fluxo básico de integração
+\`\`\`
+Seu app                  Xaman API             Xaman (celular)
+  │                         │                      │
+  │── Criar payload ───────▶│                      │
+  │◀── UUID + QR URL ───────│                      │
+  │                         │                      │
+  │── Mostrar QR ao usuário │                      │
+  │                         │◀── Usuario escaneia ──│
+  │                         │                      │
+  │◀── WebSocket: signed ───│◀── Usuario assinatura ────│
+  │                         │                      │
+  │── Verificar em ledger   │                      │
 \`\`\``,
         en: `**Xaman** (formerly XUMM) is not just a wallet: it is a transaction signing platform that exposes a **REST API and SDK** for developers. With it you can build web or mobile apps that ask users to sign Xahau transactions without ever having access to their private keys.
 
@@ -211,6 +263,7 @@ Your app                  Xaman API             Xaman (mobile)
         {
           title: {
             es: "Instalación y configuración básica del SDK",
+            pt: "Instalacioun e configuração básica do SDK",
             en: "SDK installation and basic setup",
             jp: "SDKのインストールと基本設定",
             ko: "SDK 설치 및 기본 설정",
@@ -225,6 +278,12 @@ npm install xumm
 npm install xumm
 
 # Verifica la versión instalada
+npm list xumm`,
+            pt: `# Instalar o SDK de Xaman
+npm install xumm
+# Para proyectos React/Vite também você precisa
+npm install xumm
+# Verificà versioun instalada
 npm list xumm`,
             en: `# Install the Xaman SDK
 npm install xumm
@@ -263,6 +322,7 @@ npm list xumm`,
         {
           title: {
             es: "Inicialización: frontend vs backend",
+            pt: "Inicializacioun: frontend vs backend",
             en: "Initialization: frontend vs backend",
             jp: "初期化：フロントエンドとバックエンド",
             ko: "초기화: 프론트엔드 vs 백엔드",
@@ -285,6 +345,21 @@ const xumm = new Xumm("tu-api-key-aqui");
 const xummBackend = new Xumm("tu-api-key-aqui", "tu-api-secret-aqui");
 
 // Verificar que la conexión funciona
+const appInfo = await xumm.environment.getAppInfo();
+console.log("App conectada:", appInfo?.name);
+console.log("App UUID:", appInfo?.uuidv4);`,
+            pt: `import { Xumm } from "xumm";
+// ─────────────────────────────────────────────
+// FRONTEND (navegador) — apenas API Key
+// A API Key é pública e usa fluxo PKCE seguro
+// ─────────────────────────────────────────────
+const xumm = new Xumm("tu-api-key-aqui");
+// ─────────────────────────────────────────────
+// BACKEND (Node.js servidor) — API Key + Secret
+// O Secret NUNCA deve ir no navegador
+// ─────────────────────────────────────────────
+const xummBackend = new Xumm("tu-api-key-aqui", "tu-api-secret-aqui");
+// Verificar que a conexão funciona
 const appInfo = await xumm.environment.getAppInfo();
 console.log("App conectada:", appInfo?.name);
 console.log("App UUID:", appInfo?.uuidv4);`,
@@ -367,6 +442,7 @@ console.log("应用 UUID:", appInfo?.uuidv4);`,
         {
           title: {
             es: "¿Qué es el XUMM SDK?",
+            pt: "O que é ou XUMM SDK?",
             en: "What is the XUMM SDK?",
             jp: "XUMM SDKとは？",
             ko: "XUMM SDK란?",
@@ -374,6 +450,7 @@ console.log("应用 UUID:", appInfo?.uuidv4);`,
           },
           content: {
             es: "SDK oficial para integrar Xaman en tu app\n\n• Autenticar usuarios con SignIn\n• Crear payloads (solicitudes de firma)\n• Mostrar QR — el usuario escanea con Xaman\n• WebSocket: respuesta en tiempo real\n• El usuario firma, tú nunca ves las claves",
+            pt: "SDK oficial para integrar Xaman em seu app\n\n• Autenticar usuários com SignIn\n• Criar payloads (solicitações de assinatura)\n• Mostrar QR — o usuário escaneia com Xaman\n• WebSocket: resposta em tempo real\n• O usuário assina, você nunca vê as chaves",
             en: "Official SDK to integrate Xaman in your app\n\n• Authenticate users with SignIn\n• Create payloads (sign requests)\n• Show QR — user scans with Xaman\n• WebSocket: real-time response\n• User signs, you never see private keys",
             jp: "アプリにXamanを統合するための公式SDK\n\n• SignInによるユーザー認証\n• ペイロード（署名リクエスト）の作成\n• QR表示 — ユーザーがXamanでスキャン\n• WebSocket：リアルタイムレスポンス\n• ユーザーが署名、秘密鍵は見えない",
             ko: "앱에 Xaman을 통합하는 공식 SDK\n\n• SignIn으로 사용자 인증\n• payload(서명 요청) 생성\n• QR 표시 — 사용자가 Xaman으로 스캔\n• WebSocket: 실시간 응답\n• 사용자가 서명, 개인키는 절대 노출 안 됨",
@@ -384,6 +461,7 @@ console.log("应用 UUID:", appInfo?.uuidv4);`,
         {
           title: {
             es: "Portal de desarrolladores",
+            pt: "Portal de desenvolvedores",
             en: "Developer portal",
             jp: "開発者ポータル",
             ko: "개발자 포털",
@@ -391,6 +469,7 @@ console.log("应用 UUID:", appInfo?.uuidv4);`,
           },
           content: {
             es: "apps.xaman.dev — tu centro de control\n\n• Crear app → obtener API Key + Secret\n• Whitelist de dominios permitidos\n• Configurar webhook URL\n• Ver estadísticas y logs de API\n\ndocs.xumm.dev — documentación completa",
+            pt: "apps.xaman.dev — seu centro de control\n\n• Criar app → obter API Key + Secret\n• Whitelist de dominios permitidos\n• Configurar webhook URL\n• Ver estadísticas e logs de API\n\ndocs.xumm.dev — documentacioun completa",
             en: "apps.xaman.dev — your control center\n\n• Create app → get API Key + Secret\n• Whitelist of allowed domains\n• Configure webhook URL\n• View stats and API logs\n\ndocs.xumm.dev — full documentation",
             jp: "apps.xaman.dev — あなたのコントロールセンター\n\n• アプリ作成 → APIキー＋シークレット取得\n• 許可ドメインのホワイトリスト\n• WebhookURL設定\n• 統計とAPIログの確認\n\ndocs.xumm.dev — 完全なドキュメント",
             ko: "apps.xaman.dev — 제어 센터\n\n• 앱 생성 → API Key + Secret 발급\n• 허용 도메인 화이트리스트\n• Webhook URL 설정\n• 통계 및 API 로그 확인\n\ndocs.xumm.dev — 전체 문서",
@@ -401,6 +480,7 @@ console.log("应用 UUID:", appInfo?.uuidv4);`,
         {
           title: {
             es: "API Key vs API Secret",
+            pt: "API Key vs API Secret",
             en: "API Key vs API Secret",
             jp: "APIキー対APIシークレット",
             ko: "API Key vs API Secret",
@@ -408,7 +488,8 @@ console.log("应用 UUID:", appInfo?.uuidv4);`,
           },
           content: {
             es: "Dos credenciales con roles distintos:\n\nAPI Key (pública)\n• Segura en el navegador\n• Flujo PKCE — no necesita Secret\n• Va en el código React/JS del frontend\n\nAPI Secret (privada)\n• SOLO en el servidor (Node.js)\n• NUNCA en el navegador\n• Permisos de escritura completos",
-            en: "Two credentials with different roles:\n\nAPI Key (public)\n• Safe in the browser\n• PKCE flow — no Secret needed\n• Goes in frontend React/JS code\n\nAPI Secret (private)\n• Server ONLY (Node.js)\n• NEVER in the browser\n• Full write permissions",
+            pt: "Duas credenciais com papéis distintos:\n\nAPI Key (pública)\n• Segura no navegador\n• Fluxo PKCE — não precisa Secret\n• Vai no código React/JS do frontend\n\nAPI Secret (privada)\n• APENAS no servidor (Node.js)\n• NUNCA no navegador\n• Permissões de escrita completas",
+            en: "Two credentials with different papéis:\n\nAPI Key (public)\n• Safe in the browser\n• PKCE flow — no Secret needed\n• Goes in frontend React/JS code\n\nAPI Secret (private)\n• Server ONLY (Node.js)\n• NEVER in the browser\n• Full write permissions",
             jp: "異なる役割を持つ2つの認証情報：\n\nAPIキー（公開）\n• ブラウザで安全\n• PKCEフロー — シークレット不要\n• フロントエンドのReact/JSコードに記載\n\nAPIシークレット（非公開）\n• サーバーのみ（Node.js）\n• ブラウザには絶対に記載しない\n• 完全な書き込み権限",
             ko: "역할이 다른 두 가지 자격증명:\n\nAPI Key (공개)\n• 브라우저에서 안전\n• PKCE 흐름 — Secret 불필요\n• 프론트엔드 React/JS 코드에 사용\n\nAPI Secret (비공개)\n• 서버 전용 (Node.js)\n• 절대 브라우저에 노출 금지\n• 전체 쓰기 권한",
             zh: "两种职责不同的凭证：\n\nAPI Key（公开）\n• 可安全放在浏览器中\n• 使用 PKCE 流程，不需要 Secret\n• 放在前端 React/JS 代码中\n\nAPI Secret（私密）\n• 只能放在服务器（Node.js）\n• 绝不能暴露到浏览器\n• 拥有完整写权限",
@@ -421,6 +502,7 @@ console.log("应用 UUID:", appInfo?.uuidv4);`,
       id: "m11l2",
       title: {
         es: "Frontend: autenticación con Xaman (Login con QR)",
+        pt: "Frontend: autenticação com Xaman (Login com QR)",
         en: "Frontend: authentication with Xaman (QR Login)",
         jp: "フロントエンド：Xamanによる認証（QRログイン）",
         ko: "프론트엔드: Xaman 인증 (QR 로그인)",
@@ -507,6 +589,67 @@ const { created, resolved } = await xumm.payload.createAndSubscribe(
 const qrUrl   = created.refs.qr_png;  // imagen QR — muéstrala en tu modal
 const deepLink = created.next.always; // deep link para móvil
 const result   = await resolved;      // espera firma o rechazo
+\`\`\``,
+        pt: `A primeira integração que você construirá é o **login com Xaman**: um fluxo em que o usuário escaneia um QR com seu app Xaman e fica autenticado em sua aplicação web. É o equivalente a "Conectar com MetaMask" mas para o ecossistema Xahau.
+### Como funcionao login com Xaman?
+1. Seu app cria um payload de tipo **SignIn** (transação especial de autenticação)
+2. Xaman retorna uma URL com um **código QR** e um UUID
+3. Mostra o QR em tela ao usuário
+4. O usuário **escaneia o QR** com seu app Xaman
+5. O usuário toca **"Sign"** em seu celular (não há fee, é apenas assinatura)
+6. Seu app recebe por **WebSocket** a confirmação com a endereço do usuário
+7. Guardas o account (endereço público) como identidade do usuário
+### Ventajas de este fluxo
+- **Sem senha**: o usuário não cria nem lembra nada
+- **Não custodial**: você nunca vê chaves privadas
+- **Verificável**: a assinatura criptográfica prova que o usuário controla a conta
+- **Celular-first**: optimizado para a app Xaman
+- **Deep link**: em celular abre Xaman automaticamente sem escanear
+### Proyecto de exemplo: React + Vite
+Crearás um projeto React com Vite que tem:
+- Um botoun **"Conectar com Xaman"** na página principal
+- Um **modal flotante** com o QR que aparece sobre o contenido sem reemplazar a página
+- Deep link dentro do modal para abrir Xaman desde o celular
+- Estado de sessão: endereço conectada e opcioun de desconectar
+### Instalacioun do projeto
+\`\`\`bash
+npm create vite@latest xaman-login -- --template react
+cd xaman-login
+npm install xumm xahau
+npm run dev
+\`\`\`
+### Arquivos que você precisa modificar
+Vite gera o projeto com varios arquivos. Solo tems que tocar **uno**:
+| Arquivo | Accioun |
+|---------|--------|
+| \`src/App.jsx\` | **Substitua todo su contenido** por o código do exemplo |
+| \`src/main.jsx\` | No tocar — lo gera Vite, arranca a app |
+| \`index.html\` | No tocar — punto de entrada HTML |
+| \`src/App.css\` | Você pode borrarlo — o exemplo usa estilos inline |
+| \`src/index.css\` | Você pode borrarlo ou dejarlo — no afecta ao exemplo |
+### Passo previo obrigatourio, whitelist em apps.xaman.dev
+Antes de executar o código, você deve registrar tu URL no portal de Xaman:
+1. Ve a **apps.xaman.dev** → tu aplicacioun → **Origin/Redirect URLs**
+2. Adicione tu localhost e port ejecutando tu projeto web como: \`http://localhost:5173\`
+3. Guarda os alteraçãos
+Sem este paso receberás o error **"access_denied / Invalid client/redirect URL"**.
+### Como funcionao QR no modal do navegador
+O SDK pode criar payloads diretamente desde o browser usando **\`payload.createAndSubscribe()\`**. Para que funcione, a URL de tu app deve estar na **whitelist** de apps.xaman.dev — o browser envíà cabecera Origin automaticamente, e Xaman a valida contra esa lista.
+Uma vez que o origem está permitido, o método:
+1. Hace uma requisição à API de Xaman com a API Key
+2. Devuelve \`created.refs.qr_png\` — a URL da imagen QR que você pode mostrar em tu modal
+3. Abra um **WebSocket** e espera a respuesta do usuário
+4. Cuando o usuário assina, \`resolved\` se resuelve com o resultado
+\`\`\`javascript
+const { created, resolved } = await xumm.payload.createAndSubscribe(
+  { txjson: { TransactionType: "SignIn", NetworkID: 21338 } },
+  (event) => {
+    if (typeof event.data.signed !== "undefined") return event.data;
+  }
+);
+const qrUrl   = created.refs.qr_png;  // imagen QR — muéstrala em tu modal
+const deepLink = created.next.always; // deep link para celular
+const result   = await resolved;      // espera firmao rejeição
 \`\`\``,
         en: `The first integration you'll build is **Xaman login**: a flow where the user scans a QR with the Xaman app and gets authenticated in your web application. It's the equivalent of "Connect with MetaMask" but for the Xahau ecosystem.
 
@@ -663,6 +806,7 @@ Viteがプロジェクトを自動生成します。変更が必要なファイ�
         {
           title: {
             es: "Instalación y configuración básica del proyecto",
+            pt: "Instalacioun e configuração básica do projeto",
             en: "SDK installation and project basic setup",
             jp: "SDKのインストールとプロジェクトの基本設定",
             ko: "SDK 설치 및 프로젝트 기본 설정",
@@ -674,6 +818,11 @@ Viteがプロジェクトを自動生成します。変更が必要なファイ�
 cd xaman-login
 npm install xumm xahau
 # Después de modificar src/App.jsx ejecutar:
+npm run dev`,
+            pt: `npm create vite@latest xaman-login -- --template react
+cd xaman-login
+npm install xumm xahau
+# Depois de modificar src/App.jsx executar:
 npm run dev`,
             en: `npm create vite@latest xaman-login -- --template react
 cd xaman-login
@@ -696,6 +845,7 @@ npm run dev`,
         {
           title: {
             es: "App.jsx — Login con QR",
+            pt: "App.jsx — Login com QR",
             en: "App.jsx — QR modal login",
             jp: "App.jsx — QRモーダルログイン",
             ko: "App.jsx — QR 모달 로그인",
@@ -874,6 +1024,170 @@ export default function App() {
       {qrUrl && (
         <QRModal
           titulo="Inicia sesión con Xaman"
+          qrUrl={qrUrl}
+          deepLink={deepLink}
+          onCancel={cancelar}
+        />
+      )}
+    </div>
+  );
+}`,
+            pt: `// src/App.jsx — Login com QR modal em seu própria página
+// ANTES DE EJECUTAR:
+// Em apps.xaman.dev → seu app → Origin/Redirect URLs → adiciona http://localhost:5173
+// Añada API Key de seu app: xumm = new Xumm("TU_API_KEY_AQUI");
+//
+// Mesmo padrão que o exercício de pagamento com QR modal:
+// createAndSubscribe() cria o payload e tú mostra o QR em seu próprio modal.
+// O usuário nunca sale de seu página para fazer login.
+import { useState, useEffect } from "react";
+import { Xumm } from "xumm";
+import { Client } from "xahau";
+const xumm = new Xumm("TU_API_KEY_AQUI");
+async function obterInfoCuenta(address) {
+  const client = new Client("wss://xahau-test.net");
+  await client.connect();
+  try {
+    const res = await client.request({
+      command: "account_info",
+      account: address,
+      ledger_index: "current",
+    });
+    const info = res.result.account_data;
+    return {
+      saldo: (Number(info.Saldo) / 1_000_000).toFixed(6),
+      sequence: info.Sequence,
+    };
+  } catch (err) {
+    if (err.data?.error === "actNotFound") return { saldo: "não ativada", sequence: "—" };
+    throw err;
+  } finally {
+    await client.disconnect();
+  }
+}
+// ── Modal com o QR ───────────────────────────────────────────────────────────
+function QRModal({ titulo, qrUrl, deepLink, onCancel }) {
+  return (
+    <div style={{
+      position: "fixed", inset: 0,
+      background: "rgba(0,0,0,0.75)",
+      display: "flex", alignItems: "center", justifyContent: "center",
+      zIndex: 1000,
+    }}>
+      <div style={{
+        background: "#fff", borderRadius: 16, padding: "2rem",
+        textAlign: "center", maxWidth: 300, width: "90%",
+      }}>
+        <h2 style={{ marginTop: 0 }}>{titulo}</h2>
+        <img src={qrUrl} alt="QR Xaman" width={220}
+          style={{ display: "block", margin: "0 auto" }} />
+        <p style={{ fontSize: "0.9rem" }}>
+          ¿Em celular?{" "}
+          <a href={deepLink} rel="noopener noreferrer">Abra Xaman diretamente</a>
+        </p>
+        <button onClick={onCancel} style={{ marginTop: "0.5rem" }}>Cancelar</button>
+      </div>
+    </div>
+  );
+}
+// ── Componente principal ──────────────────────────────────────────────────────
+export default function App() {
+  const [account, setAccount]   = useState(null);
+  const [saldo, setBalance]   = useState(null);
+  const [sequence, setSequence] = useState(null);
+  const [loading, setLoading]   = useState(false);
+  const [error, setError]       = useState(null);
+  const [qrUrl, setQrUrl]       = useState(null);
+  const [deepLink, setDeepLink] = useState(null);
+  // Restaurar sessão se o SDK já tem um token guardado
+  useEffect(() => {
+    xumm.on("ready", async () => {
+      const me = await xumm.me;
+      if (me?.account) {
+        setAccount(me.account);
+        const info = await obterInfoCuenta(me.account);
+        setBalance(info.saldo);
+        setSequence(info.sequence);
+      }
+    });
+  }, []);
+  async function conectarConXaman() {
+    setLoading(true);
+    setError(null);
+    try {
+      const { created, resolved } = await xumm.payload.createAndSubscribe(
+        { txjson: { TransactionType: "SignIn", NetworkID: 21338 } },
+        (event) => {
+          if (typeof event.data.signed !== "undefined") return event.data;
+        }
+      );
+      setQrUrl(created.refs.qr_png);
+      setDeepLink(created.next.always);
+      const result = await resolved;
+      setQrUrl(null);
+      setDeepLink(null);
+      if (result.signed) {
+        const payloadResult = await xumm.payload.get(created.uuid);
+        const userAccount = payloadResult.response.account;
+        setAccount(userAccount);
+        const info = await obterInfoCuenta(userAccount);
+        setBalance(info.saldo);
+        setSequence(info.sequence);
+      } else {
+        setError("Login rejeitado por o usuário");
+      }
+    } catch (err) {
+      setError(\`Error: \${err.message || "Não foi possível conectar"}\`);
+    } finally {
+      setLoading(false);
+    }
+  }
+  function cancelar() {
+    setQrUrl(null);
+    setDeepLink(null);
+    setLoading(false);
+  }
+  async function desconectar() {
+    await xumm.logout();
+    setAccount(null);
+    setBalance(null);
+    setSequence(null);
+  }
+  return (
+    <div style={{ padding: "2rem", fontFamily: "sans-serif", maxWidth: 480, margin: "0 auto" }}>
+      <h1>Xaman Login — QR Modal</h1>
+      {account ? (
+        <div>
+          <p>✅ Conectado</p>
+          <table style={{ borderCollapse: "collapse", width: "100%", marginBottom: "1rem" }}>
+            <tbody>
+              <tr>
+                <td style={{ padding: "6px 12px 6px 0", color: "#666" }}>Conta</td>
+                <td><code style={{ wordBreak: "break-all", fontSize: "0.85rem" }}>{account}</code></td>
+              </tr>
+              <tr>
+                <td style={{ padding: "6px 12px 6px 0", color: "#666" }}>Saldo</td>
+                <td><strong>{saldo} XAH</strong></td>
+              </tr>
+              <tr>
+                <td style={{ padding: "6px 12px 6px 0", color: "#666" }}>Sequência</td>
+                <td>{sequence}</td>
+              </tr>
+            </tbody>
+          </table>
+          <button onClick={desconectar}>Desconectar</button>
+        </div>
+      ) : (
+        <div>
+          {error && <p style={{ color: "rede" }}>{error}</p>}
+          <button onClick={conectarConXaman} disabled={loading}>
+            {loading ? "Generando QR..." : "🔑 Conectar com Xaman"}
+          </button>
+        </div>
+      )}
+      {qrUrl && (
+        <QRModal
+          titulo="Inicia sessão com Xaman"
           qrUrl={qrUrl}
           deepLink={deepLink}
           onCancel={cancelar}
@@ -1376,6 +1690,7 @@ export default function App() {
         {
           title: {
             es: "Flujo de login con Xaman",
+            pt: "Fluxo de login com Xaman",
             en: "Xaman login flow",
             jp: "Xamanログインフロー",
             zh: "Xaman 登录流程",
@@ -1383,6 +1698,7 @@ export default function App() {
           },
           content: {
             es: "Autenticación sin contraseña:\n\n1. Tu app crea payload SignIn\n2. Muestras el QR al usuario\n3. Usuario escanea con Xaman\n4. Usuario toca 'Sign' (sin fee)\n5. WebSocket te entrega la dirección\n6. El usuario está autenticado ✓",
+            pt: "Autenticacioun sem senha:\n\n1. Seu app cria payload SignIn\n2. Mostra o QR ao usuário\n3. Usuário escaneia com Xaman\n4. Usuário toca 'Sign' (sem fee)\n5. WebSocket entrega a você endereço\n6. O usuário está autenticado ✓",
             en: "Passwordless authentication:\n\n1. Your app creates SignIn payload\n2. You show the QR to the user\n3. User scans with Xaman\n4. User taps 'Sign' (no fee)\n5. WebSocket delivers the address\n6. User is authenticated ✓",
             jp: "パスワードレス認証：\n\n1. アプリがSignInペイロードを作成\n2. ユーザーにQRを表示\n3. ユーザーがXamanでスキャン\n4. ユーザーが「Sign」をタップ（手数料なし）\n5. WebSocketがアドレスを配信\n6. ユーザーが認証済み ✓",
             zh: "无密码认证流程：\n\n1. 应用创建 SignIn payload\n2. 向用户显示二维码\n3. 用户用 Xaman 扫码\n4. 用户点击“Sign”（无手续费）\n5. WebSocket 返回地址\n6. 用户完成认证 ✓",
@@ -1393,6 +1709,7 @@ export default function App() {
         {
           title: {
             es: "Escritorio vs Móvil",
+            pt: "Desktop vs Celular",
             en: "Desktop vs Mobile",
             jp: "デスクトップ対モバイル",
             zh: "桌面端 vs 移动端",
@@ -1400,6 +1717,7 @@ export default function App() {
           },
           content: {
             es: "El modal maneja escritorio y móvil:\n\nEscritorio\n• El modal muestra la imagen QR (qr_png)\n• El usuario escanea con su app Xaman\n• El modal se cierra al confirmar la firma\n\nMóvil\n• El modal muestra el deep link (next.always)\n• Pulsa el enlace → abre Xaman automáticamente\n• Sin necesidad de escanear",
+            pt: "O modal trata desktop e celular:\n\nDesktop\n• O modal mostra imagem QR (qr_png)\n• O usuário escaneia com sua app Xaman\n• O modal fecha ao confirmar a assinatura\n\nCelular\n• O modal mostra o deep link (next.always)\n• Toque no link → abre Xaman automaticamente\n• Sem necessidade de escanear",
             en: "The modal handles desktop and mobile:\n\nDesktop\n• Modal shows the QR image (qr_png)\n• User scans with their Xaman app\n• Modal closes when signature is confirmed\n\nMobile\n• Modal shows the deep link (next.always)\n• Tap the link → Xaman opens automatically\n• No scanning needed",
             jp: "モーダルがデスクトップとモバイルを処理：\n\nデスクトップ\n• モーダルがQR画像（qr_png）を表示\n• ユーザーがXamanアプリでスキャン\n• 署名確認後にモーダルが閉じる\n\nモバイル\n• モーダルがディープリンク（next.always）を表示\n• リンクをタップ → Xamanが自動で起動\n• スキャン不要",
             zh: "弹窗同时处理桌面端和移动端：\n\n桌面端\n• 弹窗显示二维码图片（qr_png）\n• 用户用 Xaman 应用扫码\n• 签名确认后弹窗关闭\n\n移动端\n• 弹窗显示深链（next.always）\n• 点击链接 → 自动打开 Xaman\n• 无需扫码",
@@ -1410,6 +1728,7 @@ export default function App() {
         {
           title: {
             es: "Eventos del SDK",
+            pt: "Eventos do SDK",
             en: "SDK events",
             jp: "SDKイベント",
             zh: "SDK 事件",
@@ -1417,6 +1736,7 @@ export default function App() {
           },
           content: {
             es: "payload.createAndSubscribe() desde el browser:\n\n1. La origin http://localhost:5173 está en la whitelist\n2. El browser envía Origin header → Xaman valida el CORS\n3. Devuelve created.refs.qr_png → imagen del QR\n4. Muestra el QR dentro del modal de tu página\n5. WebSocket espera → usuario firma → modal se cierra\n\nNo se abre ninguna ventana externa",
+            pt: "payload.createAndSubscribe() a partir do browser:\n\n1. A origin http://localhost:5173 está na whitelist\n2. O browser envia Origin header → Xaman valida o CORS\n3. Retorna created.refs.qr_png → imagem do QR\n4. Mostra o QR dentro do modal de seu página\n5. WebSocket espera → usuário assina → modal fecha\n\nNão se abre nenhuma janela externa",
             en: "payload.createAndSubscribe() from the browser:\n\n1. Origin http://localhost:5173 is in the whitelist\n2. Browser sends Origin header → Xaman validates CORS\n3. Returns created.refs.qr_png → QR image\n4. Shows QR inside your page modal\n5. WebSocket waits → user signs → modal closes\n\nNo external window is opened",
             jp: "ブラウザからのpayload.createAndSubscribe()：\n\n1. http://localhost:5173がホワイトリストにある\n2. ブラウザがOriginヘッダーを送信 → XamanがCORSを検証\n3. created.refs.qr_pngを返す → QR画像\n4. ページのモーダル内にQRを表示\n5. WebSocketが待機 → ユーザーが署名 → モーダルが閉じる\n\n外部ウィンドウは開かない",
             zh: "浏览器中的 payload.createAndSubscribe()：\n\n1. 将 http://localhost:5173 加入白名单\n2. 浏览器发送 Origin header → Xaman 校验 CORS\n3. 返回 created.refs.qr_png → 二维码图片\n4. 在页面弹窗中显示二维码\n5. WebSocket 等待 → 用户签名 → 弹窗关闭\n\n不会打开任何外部窗口",
@@ -1430,6 +1750,7 @@ export default function App() {
       id: "m11l3",
       title: {
         es: "Frontend: construir y firmar un Payment con Xaman",
+        pt: "Frontend: construir e assinar um Payment com Xaman",
         en: "Frontend: build and sign a Payment with Xaman",
         jp: "フロントエンド：XamanでPaymentを構築・署名",
         zh: "前端：使用 Xaman 构建并签署 Payment",
@@ -1499,6 +1820,56 @@ Tras la firma no necesitas conectarte al ledger: puedes consultar el payload con
 const payloadResult = await xumm.payload.get(created.uuid);
 const status = payloadResult.response.dispatched_result; // "tesSUCCESS" o código error
 const txid   = resultado.txid;                           // hash de la transacción
+\`\`\``,
+        pt: `Uma vez o usuário está autenticado com Xaman, você pode pedir a ele que firme qualquer transação de Xahau. Nesta lição você construirá um formulário de pagamento em que o usuário insere a **quantidade** e a **endereço de destino**, se cria um payload e o usuário vuelve a escanear o QR para assinar o Payment.
+### Como funcionao fluxo de pagamento?
+1. Usuário já está logado (tem sua conta conectada)
+2. Muestra um formulário: endereço de destino + quantidade em XAH
+3. Ao pulsar "Enviar", crias um payload com a transação \`Payment\`
+4. Xaman retorna um novo QR (diferente ao do login)
+5. O usuário **escaneia este segundo QR** com Xaman
+6. Em a app Xaman ve os detalhes: origem, destino, quantidade
+7. O usuário **aprova e assina** (ahora si hay fee de rede)
+8. Seu app recebe o resultado com o \`txid\` da transação
+### Estructura de um Payment na Xahau
+\`\`\`javascript
+{
+  TransactionType: "Payment",
+  NetworkID: 21338,              // Xahau Testnet — evita assinar em outra rede
+  Account: "conta_origem",      // a do usuário logado
+  Destination: "cuenta_destino",
+  Amount: "1000000",             // em drops (1 XAH = 1,000,000 drops)
+}
+\`\`\`
+A quantidade é expressa sempre em **drops** (a menor unidade de XAH). Para converter: \`drops = XAH * 1_000_000\`.
+### Criação do payload com o SDK
+\`\`\`javascript
+const { created, resolved } = await xumm.payload.createAndSubscribe(
+  { txjson: transação },
+  (event) => {
+    // Este callback se chama cada vez que hay um update
+    if ("signed" in event.data) {
+      return event.data;  // resolve a promessa com o resultado
+    }
+  }
+);
+\`\`\`
+- \`created\` contem \`created.refs.qr_png\` (URL do QR) e \`created.next.always\` (deep link)
+- \`resolved\` é uma Promise que resuelve cuando o usuário firmao rechaza
+- Se \`resolved.signed === true\` → assinatura bem-sucedida, \`resolved.txid\` é o hash
+### Validação antes de enviar
+Sempre valida no cliente antes de criar o payload:
+- Que o endereço de destino seja válido (comece por \`r\` e tem ~25-34 caracteres)
+- Que a quantidade sea um número positivo
+- Que no sea a misma conta que o origem
+### Verificar ou estado da transação a partir de Xaman
+Tras a assinatura no você precisa conectarte ao ledger: você pode consultar o payload com **\`xumm.payload.get(uuid)\`**. A respuesta incluye \`response.dispatched_result\`, que contem o código de resultado do ledger:
+- \`"tesSUCCESS"\` → transação confirmada com éxito
+- Qualquer otro valor (por exemplo \`"tecINSUF_RESERVE_LINE"\`) → error no ledger
+\`\`\`javascript
+const payloadResult = await xumm.payload.get(created.uuid);
+const status = payloadResult.response.dispatched_result; // "tesSUCCESS" ou código error
+const txid   = resultado.txid;                           // hash da transação
 \`\`\``,
         en: `Once the user is authenticated with Xaman, you can ask them to sign any Xahau transaction. In this lesson you'll build a payment form where the user enters the **amount** and **destination address**, a payload is created, and the user scans the QR again to sign the Payment.
 
@@ -1667,6 +2038,7 @@ const txid   = result.txid;                              // トランザクシ�
         {
           title: {
             es: "Instalación y configuración básica del proyecto",
+            pt: "Instalacioun e configuração básica do projeto",
             en: "SDK installation and project basic setup",
             jp: "SDKのインストールとプロジェクトの基本設定",
             zh: "项目安装与基础配置",
@@ -1679,6 +2051,12 @@ npm create vite@latest xaman-login -- --template react
 cd xaman-login
 npm install xumm xahau
 # Después de modificar src/App.jsx ejecutar:
+npm run dev`,
+            pt: `# Não hay necesitar de executar esta parte se já lo has hecho na seção anterior
+npm create vite@latest xaman-login -- --template react
+cd xaman-login
+npm install xumm xahau
+# Depois de modificar src/App.jsx executar:
 npm run dev`,
             en: `# No need to run this part if you already did it in the previous step
 npm create vite@latest xaman-login -- --template react
@@ -1704,6 +2082,7 @@ npm run dev`,
         {
           title: {
             es: "App.jsx — Login con QR modal + Payment con QR modal",
+            pt: "App.jsx — Login com QR modal + Payment com QR modal",
             en: "App.jsx — QR modal login + QR modal payment",
             jp: "App.jsx — QRモーダルログイン＋QRモーダルPayment",
             zh: "App.jsx —— 二维码弹窗登录 + 二维码弹窗支付",
@@ -2026,6 +2405,298 @@ export default function App() {
       )}
 
       {/* Un solo modal reutilizable para login y pago */}
+      {qrUrl && <QRModal titulo={qrTitulo} qrUrl={qrUrl} deepLink={deepLink} onCancel={cancelar} />}
+    </div>
+  );
+}`,
+            pt: `// src/App.jsx — Todo em seu própria página: QR modal para login e QR modal para pagamento
+// ANTES DE EJECUTAR:
+// Em apps.xaman.dev → seu app → Origin/Redirect URLs → adiciona http://localhost:5173
+// Añada API Key de seu app: xumm = new Xumm("TU_API_KEY_AQUI");
+//
+// Um apenas <QRModal> reutilizável serve tanto parao login como parao pagamento.
+// O usuário nunca sale de seu página — todo ocurre dentro de seu próprio modal.
+import { useState, useEffect } from "react";
+import { Xumm } from "xumm";
+import { Client } from "xahau";
+const xumm = new Xumm("TU_API_KEY_AQUI");
+function xahToDrops(xah) {
+  return String(Math.floor(Number(xah) * 1_000_000));
+}
+function esRAddressValida(address) {
+  return /^r[1-9A-HJ-NP-Za-km-z]{24,33}$/.test(address);
+}
+async function obterInfoCuenta(address) {
+  const client = new Client("wss://xahau-test.net");
+  await client.connect();
+  try {
+    const res = await client.request({
+      command: "account_info",
+      account: address,
+      ledger_index: "current",
+    });
+    const info = res.result.account_data;
+    return {
+      saldo: (Number(info.Saldo) / 1_000_000).toFixed(6),
+      sequence: info.Sequence,
+    };
+  } catch (err) {
+    if (err.data?.error === "actNotFound") return { saldo: "não ativada", sequence: "—" };
+    throw err;
+  } finally {
+    await client.disconnect();
+  }
+}
+// ── Modal reutilizable — mismo componente para login e pagamento ──────────────────
+function QRModal({ titulo, qrUrl, deepLink, onCancel }) {
+  return (
+    <div style={{
+      position: "fixed", inset: 0,
+      background: "rgba(0,0,0,0.75)",
+      display: "flex", alignItems: "center", justifyContent: "center",
+      zIndex: 1000,
+    }}>
+      <div style={{
+        background: "#fff", borderRadius: 16, padding: "2rem",
+        textAlign: "center", maxWidth: 300, width: "90%",
+      }}>
+        <h2 style={{ marginTop: 0 }}>{titulo}</h2>
+        <img src={qrUrl} alt="QR Xaman" width={220}
+          style={{ display: "block", margin: "0 auto" }} />
+        <p style={{ fontSize: "0.9rem" }}>
+          ¿Em celular?{" "}
+          <a href={deepLink} rel="noopener noreferrer">Abra Xaman diretamente</a>
+        </p>
+        <button onClick={onCancel} style={{ marginTop: "0.5rem" }}>Cancelar</button>
+      </div>
+    </div>
+  );
+}
+// ── Componente principal ──────────────────────────────────────────────────────
+export default function App() {
+  const [account, setAccount]   = useState(null);
+  const [saldo, setBalance]   = useState(null);
+  const [sequence, setSequence] = useState(null);
+  const [loading, setLoading]   = useState(false);
+  const [error, setError]       = useState(null);
+  // Estado do pagamento
+  const [destino, setDestino]   = useState("");
+  const [quantidade, setCantidad] = useState("");
+  const [txid, setTxid]         = useState(null);
+  const [txStatus, setTxStatus] = useState(null);
+  // Estado do QR modal (compartido entre login e pagamento)
+  const [qrUrl, setQrUrl]         = useState(null);
+  const [deepLink, setDeepLink]   = useState(null);
+  const [qrTitulo, setQrTitulo]   = useState("");
+  // Restaurar sessão se o SDK já tem um token guardado
+  useEffect(() => {
+    xumm.on("ready", async () => {
+      const me = await xumm.me;
+      if (me?.account) {
+        setAccount(me.account);
+        const info = await obterInfoCuenta(me.account);
+        setBalance(info.saldo);
+        setSequence(info.sequence);
+      }
+    });
+  }, []);
+  // ── Login com QR modal ────────────────────────────────────────────────────
+  async function conectarConXaman() {
+    setLoading(true);
+    setError(null);
+    try {
+      const { created, resolved } = await xumm.payload.createAndSubscribe(
+        { txjson: { TransactionType: "SignIn", NetworkID: 21338 } },
+        (event) => {
+          if (typeof event.data.signed !== "undefined") return event.data;
+        }
+      );
+      setQrTitulo("Inicia sessão com Xaman");
+      setQrUrl(created.refs.qr_png);
+      setDeepLink(created.next.always);
+      const result = await resolved;
+      setQrUrl(null);
+      setDeepLink(null);
+      if (result.signed) {
+        const payloadResult = await xumm.payload.get(created.uuid);
+        const userAccount = payloadResult.response.account;
+        setAccount(userAccount);
+        const info = await obterInfoCuenta(userAccount);
+        setBalance(info.saldo);
+        setSequence(info.sequence);
+      } else {
+        setError("Login rejeitado por o usuário");
+      }
+    } catch (err) {
+      setError(\`Error: \${err.message || "Não foi possível conectar"}\`);
+    } finally {
+      setLoading(false);
+    }
+  }
+  // ── Pagamento com QR modal ─────────────────────────────────────────────────────
+  async function enviarPagamento(e) {
+    e.preventDefault();
+    setError(null);
+    setTxid(null);
+    setTxStatus(null);
+    if (!esRAddressValida(destino)) {
+      setError("Endereço destino inválida (deve empezar por 'r')");
+      return;
+    }
+    if (destino === account) {
+      setError("No você pode enviarte a ti mismo");
+      return;
+    }
+    const cantidadNum = Number(quantidade);
+    if (isNaN(cantidadNum) || cantidadNum <= 0) {
+      setError("Introduce uma quantidade válida mayor que 0");
+      return;
+    }
+    setLoading(true);
+    try {
+      const { created, resolved } = await xumm.payload.createAndSubscribe(
+        {
+          txjson: {
+            TransactionType: "Payment",
+            NetworkID: 21338,
+            Account: account,
+            Destination: destino,
+            Amount: xahToDrops(cantidadNum),
+          },
+        },
+        (event) => {
+          if (typeof event.data.signed !== "undefined") return event.data;
+        }
+      );
+      setQrTitulo("Firma o pagamento com Xaman");
+      setQrUrl(created.refs.qr_png);
+      setDeepLink(created.next.always);
+      const result = await resolved;
+      setQrUrl(null);
+      setDeepLink(null);
+      if (result.signed) {
+        const payloadResult = await xumm.payload.get(created.uuid);
+        setTxid(result.txid);
+        setTxStatus(payloadResult.response.dispatched_result);
+      } else {
+        setError("O usuário rejeitou a transação");
+      }
+    } catch (err) {
+      setError(\`Error: \${err.message || "Não foi possível criar o pagamento"}\`);
+    } finally {
+      setLoading(false);
+    }
+  }
+  function cancelar() {
+    setQrUrl(null);
+    setDeepLink(null);
+    setLoading(false);
+  }
+  async function desconectar() {
+    await xumm.logout();
+    setAccount(null);
+    setBalance(null);
+    setSequence(null);
+    setTxid(null);
+    setTxStatus(null);
+    setDestino("");
+    setCantidad("");
+  }
+  // ── Renderizado ────────────────────────────────────────────────────────────
+  return (
+    <div style={{ padding: "2rem", fontFamily: "sans-serif", maxWidth: 520, margin: "0 auto" }}>
+      <h1>💸 Xahau Payment — QR Modal</h1>
+      {account ? (
+        <div>
+          <p>✅ Conectado</p>
+          <table style={{ borderCollapse: "collapse", width: "100%", marginBottom: "1rem" }}>
+            <tbody>
+              <tr>
+                <td style={{ padding: "6px 12px 6px 0", color: "#666" }}>Conta</td>
+                <td><code style={{ wordBreak: "break-all", fontSize: "0.85rem" }}>{account}</code></td>
+              </tr>
+              <tr>
+                <td style={{ padding: "6px 12px 6px 0", color: "#666" }}>Saldo</td>
+                <td><strong>{saldo} XAH</strong></td>
+              </tr>
+              <tr>
+                <td style={{ padding: "6px 12px 6px 0", color: "#666" }}>Sequência</td>
+                <td>{sequence}</td>
+              </tr>
+            </tbody>
+          </table>
+          <button onClick={desconectar}>Desconectar</button>
+        </div>
+      ) : (
+        <div>
+          {error && <p style={{ color: "rede" }}>{error}</p>}
+          <button onClick={conectarConXaman} disabled={loading}>
+            {loading ? "Generando QR de login..." : "🔑 Conectar com Xaman"}
+          </button>
+        </div>
+      )}
+      {/* Formulário de pagamento */}
+      {account && !qrUrl && (
+        <form onSubmit={enviarPagamento} style={{ marginTop: "1.5rem", borderTop: "1px solid #ddd", paddingTop: "1.5rem" }}>
+          <h2 style={{ marginTop: 0 }}>Enviar XAH</h2>
+          <div style={{ marginBottom: "1rem" }}>
+            <label style={{ display: "block", marginBottom: 4 }}>Endereço destino:</label>
+            <input
+              type="text"
+              placeholder="rXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+              value={destino}
+              onChange={(e) => setDestino(e.target.value)}
+              style={{ width: "100%", padding: 8, boxSizing: "border-box" }}
+            />
+          </div>
+          <div style={{ marginBottom: "1rem" }}>
+            <label style={{ display: "block", marginBottom: 4 }}>Quantidade (XAH):</label>
+            <input
+              type="number"
+              placeholder="0.01"
+              min="0.000001"
+              step="0.000001"
+              value={quantidade}
+              onChange={(e) => setCantidad(e.target.value)}
+              style={{ width: 160, padding: 8 }}
+            />
+          </div>
+          {error && <p style={{ color: "rede" }}>{error}</p>}
+          <button type="submit" disabled={loading}>
+            {loading ? "Generando QR do pagamento..." : "📤 Enviar pagamento"}
+          </button>
+        </form>
+      )}
+      {/* Resultado do pagamento */}
+      {txid && (
+        <div style={{
+          background: txStatus === "tesSUCCESS" ? "#1a3a1a" : "#3a1a1a",
+          border: \`1px solid \${txStatus === "tesSUCCESS" ? "#4caf50" : "#e53935"}\`,
+          padding: 16, borderRadius: 8, marginTop: "1.5rem",
+          color: "#ffffff",
+        }}>
+          {txStatus === "tesSUCCESS" ? (
+            <>
+              <p style={{ margin: "0 0 8px", color: "#4caf50" }}>✅ <strong>¡Pagamento confirmado!</strong></p>
+              <p style={{ margin: "0 0 4px", fontSize: "0.85rem", color: "#cccccc" }}>Hash da transação:</p>
+              <p style={{ margin: "0 0 8px" }}>
+                <code style={{ fontSize: "0.75rem", wordBreak: "break-all", color: "#ffffff" }}>{txid}</code>
+              </p>
+              <a
+                href={\`https://xaman.app/explorer/21338/\${txid}\`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: "#66ccff" }}
+              >
+                🔍 Ver em Xaman Explorer
+              </a>
+            </>
+          ) : (
+            <p style={{ margin: 0, color: "#ff8080" }}>⚠️ <strong>Resultado: {txStatus}</strong></p>
+          )}
+        </div>
+      )}
+      {/* Um solo modal reutilizable para login e pagamento */}
       {qrUrl && <QRModal titulo={qrTitulo} qrUrl={qrUrl} deepLink={deepLink} onCancel={cancelar} />}
     </div>
   );
@@ -2790,6 +3461,7 @@ export default function App() {
         {
           title: {
             es: "Flujo de pago con Xaman",
+            pt: "Fluxo de pagamento com Xaman",
             en: "Payment flow with Xaman",
             jp: "Xamanを使った支払いフロー",
             zh: "使用 Xaman 的支付流程",
@@ -2797,6 +3469,7 @@ export default function App() {
           },
           content: {
             es: "El usuario firma dos veces:\n\n1er QR — Login (SignIn, sin fee)\n• Identifica al usuario → obttienes su dirección\n\n2do QR — Pago (Payment, con fee)\n• Muestra destino y cantidad\n• Usuario revisa y aprueba\n• Recibes txid de la tx firmada",
+            pt: "O usuário assina dois vezes:\n\n1º QR — Login (SignIn, sem fee)\n• Identifica ao usuário → obttems sua endereço\n\n2º QR — Pagamento (Payment, com fee)\n• Mostra destino e quantidade\n• Usuário revisa e assina\n• Você recebe txid da tx assinada",
             en: "The user scans twice:\n\n1st QR — Login (SignIn, no fee)\n• Identifies user → you get their address\n\n2nd QR — Payment (with fee)\n• Shows destination and amount\n• User reviews and approves\n• You receive txid of signed tx",
             jp: "ユーザーは2回スキャン：\n\n1枚目QR — ログイン（SignIn、手数料なし）\n• ユーザーを識別 → アドレスを取得\n\n2枚目QR — 支払い（手数料あり）\n• 宛先と金額を表示\n• ユーザーが確認・承認\n• 署名済みtxのtxidを受信",
             zh: "用户需要扫描两次：\n\n第 1 个二维码 —— 登录（SignIn，无手续费）\n• 识别用户 → 获取其地址\n\n第 2 个二维码 —— 支付（Payment，有手续费）\n• 显示目标地址和金额\n• 用户检查并批准\n• 你收到已签名交易的 txid",
@@ -2807,6 +3480,7 @@ export default function App() {
         {
           title: {
             es: "Drops: la unidad de XAH",
+            pt: "Drops: a unidad de XAH",
             en: "Drops: the XAH unit",
             jp: "Drops：XAHの単位",
             zh: "Drops：XAH 的单位",
@@ -2814,6 +3488,7 @@ export default function App() {
           },
           content: {
             es: "Las cantidades se expresan en drops:\n\n1 XAH = 1,000,000 drops\n0.5 XAH = 500,000 drops\n0.000001 XAH = 1 drop (mínimo)\n\nConversión en código:\ndrops = Math.floor(xah * 1_000_000)\nxah = drops / 1_000_000\n\nSiempre usa strings para Amount en el JSON",
+            pt: "As quantidades são expressas em drops:\n\n1 XAH = 1,000,000 drops\n0.5 XAH = 500,000 drops\n0.000001 XAH = 1 drop (mínimo)\n\nConversão em código:\ndrops = Math.floor(xah * 1_000_000)\nxah = drops / 1_000_000\n\nSempre use strings para Amount no JSON",
             en: "Amounts are expressed in drops:\n\n1 XAH = 1,000,000 drops\n0.5 XAH = 500,000 drops\n0.000001 XAH = 1 drop (minimum)\n\nConversion in code:\ndrops = Math.floor(xah * 1_000_000)\nxah = drops / 1_000_000\n\nAlways use strings for Amount in JSON",
             jp: "金額はdropsで表します：\n\n1 XAH = 1,000,000 drops\n0.5 XAH = 500,000 drops\n0.000001 XAH = 1 drop（最小単位）\n\nコードでの変換：\ndrops = Math.floor(xah × 1,000,000)\nxah = drops / 1,000,000\n\nJSONのAmountには常にstringを使用",
             zh: "金额以 drops 表示：\n\n1 XAH = 1,000,000 drops\n0.5 XAH = 500,000 drops\n0.000001 XAH = 1 drop（最小单位）\n\n代码中的换算：\ndrops = Math.floor(xah * 1_000_000)\nxah = drops / 1_000_000\n\nJSON 中的 Amount 一律使用字符串",
@@ -2824,6 +3499,7 @@ export default function App() {
         {
           title: {
             es: "createAndSubscribe: el método clave",
+            pt: "createAndSubscribe: o método-chave",
             en: "createAndSubscribe: the key method",
             jp: "createAndSubscribe：重要なメソッド",
             zh: "createAndSubscribe：关键方法",
@@ -2831,6 +3507,7 @@ export default function App() {
           },
           content: {
             es: "Un solo método para crear + escuchar:\n\nconst { created, resolved } = await\n  xumm.payload.createAndSubscribe(\n    { txjson: transaccion },\n    (event) => {\n      if ('signed' in event.data)\n        return event.data\n    }\n  )\n\ncreated.refs.qr_png → URL del QR\nawait resolved → firma o rechazo",
+            pt: "Um único método para criar + escutar:\n\nconst { created, resolved } = await\n  xumm.payload.createAndSubscribe(\n    { txjson: transação },\n    (event) => {\n      if ('signed' in event.data)\n        return event.data\n    }\n  )\n\ncreated.refs.qr_png → URL do QR\nawait resolved → assinatura ou rejeição",
             en: "One method to create + listen:\n\nconst { created, resolved } = await\n  xumm.payload.createAndSubscribe(\n    { txjson: transaction },\n    (event) => {\n      if ('signed' in event.data)\n        return event.data\n    }\n  )\n\ncreated.refs.qr_png → QR URL\nawait resolved → sign or reject",
             jp: "作成＋リッスンを一つのメソッドで：\n\nconst { created, resolved } = await\n  xumm.payload.createAndSubscribe(\n    { txjson: transaction },\n    (event) => {\n      if ('signed' in event.data)\n        return event.data\n    }\n  )\n\ncreated.refs.qr_png → QR URL\nawait resolved → 署名または拒否",
             zh: "一个方法同时完成创建 + 监听：\n\nconst { created, resolved } = await\n  xumm.payload.createAndSubscribe(\n    { txjson: transaction },\n    (event) => {\n      if ('signed' in event.data)\n        return event.data\n    }\n  )\n\ncreated.refs.qr_png → 二维码 URL\nawait resolved → 签名或拒绝",
@@ -2844,6 +3521,7 @@ export default function App() {
       id: "m11l4",
       title: {
         es: "Backend: servidor Node.js con Express y Xaman",
+        pt: "Backend: servidor Node.js com Express e Xaman",
         en: "Backend: Node.js server with Express and Xaman",
         jp: "バックエンド：ExpressとXamanを使ったNode.jsサーバー",
         zh: "后端：使用 Express 与 Xaman 的 Node.js 服务器",
@@ -2925,6 +3603,66 @@ xaman-backend/
     │   ├── auth.js   # Rutas de login
     │   └── pago.js   # Rutas de pago
     └── webhook.js    # Handler del webhook de Xaman
+\`\`\``,
+        pt: `Na lição anterior o frontend criava os payloads diretamente a partir do navegador (usando apenas a API Key). A abordagem **backend** adiciona uma camada de segurança e lógica de negócio: o servidor cria os payloads usando a API Key e o **API Secret**, e o frontend só recebe o QR para mostrá-lo.
+### Por que usar um backend?
+- **Lougica de negocio**: validar reglas de negocio antes de criar o pagamento
+- **API Secret seguro**: o secret nunca llega ao navegador
+- **Auditoria**: guardar um registro de todas as transações em sua base de dados
+- **Webhooks**: receber notificações de Xaman em seu servidor quando o usuário assina
+- **Integração**: conectar com otros sistemas (email, CRM, contabilidad)
+### Arquitectura do projeto backend
+\`\`\`
+Frontend (React)          Backend (Express)          Xaman API
+     │                          │                         │
+     │── POST /pagamento ──────────▶ │                         │
+     │   { destino, quantidade }  │── Criar payload ───────▶│
+     │                          │◀── UUID + QR URL ───────│
+     │◀── { qrUrl, uuid } ───── │                         │
+     │                          │                         │
+     │ (mostra QR ao usuário)  │                         │
+     │                          │◀── Webhook: signed ─────│
+     │                          │   (usuário firmou)       │
+     │                          │── Guardar em DB         │
+     │                          │── Verificar ledger      │
+\`\`\`
+### Webhooks vs Suscripcioun WebSocket
+Você tem duas formas de receber a notificação de assinatura:
+**Webhook** (recomendado para produccioun):
+- Xaman faz um HTTP POST ao seu servidor quando o usuário assina
+- Você precisa de uma URL pública (não funciona em localhost sem um túnel)
+- Más robusto, no você precisa manter conexioun abierta
+**Suscripcioun WebSocket** (más fácil para desarrollo):
+- O SDK mantem uma conexioun WebSocket com Xaman
+- Você recebe a notificação em tempo real em seu código Node.js
+- Funciona localmentehost sem configuração extra
+### Configurar ou webhook no dashboard
+1. Em **apps.xaman.dev**, ve a tu app
+2. Em "Webhook", insere a URL de tu servidor: \`https://tu-servidor.com/webhook/xaman\`
+3. Guarda os alteraçãos
+4. Xaman enviará um POST a esa URL com o resultado de cada payload
+### Variáveis de ambiente (nunca hardcodear secrets)
+\`\`\`bash
+# .env (nunca comitear este arquivo a git)
+XUMM_API_KEY=tu-api-key-aqui
+XUMM_API_SECRET=tu-api-secret-aqui
+PORT=3001
+\`\`\`
+Adicione \`.env\` a tu \`.gitignore\` para que as credenciais nunca se suban a GitHub.
+Se tems sospechas de que tu API Secret ha sido comprometida, rota as credenciais desde o dashboard de Xumm: gera um novo par de API Key + API Secret, actualiza tu backend com as nuevas credenciais, e remova as antiguas.
+### Estructura do projeto backend
+\`\`\`
+xaman-backend/
+├── .env              # Credenciales (nuncà git)
+├── .gitignore        # Incluye .env
+├── package.json
+├── server.js         # Servidor Express principal
+└── src/
+    ├── xumm.js       # Instancia compartida do SDK
+    ├── routes/
+    │   ├── auth.js   # Rotas de login
+    │   └── pagamento.js   # Rotas de pagamento
+    └── webhook.js    # Handler do webhook de Xaman
 \`\`\``,
         en: `In the previous lesson the frontend created payloads directly from the browser (using only the API Key). The **backend** approach adds a security layer and business logic: the server creates payloads using the API Key and **API Secret**, and the frontend only receives the QR to display.
 
@@ -3117,6 +3855,7 @@ xaman-backend/
         {
           title: {
             es: "Comandos de instalación",
+            pt: "Comandos de instalacioun",
             en: "Installation commands",
             jp: "インストールコマンド",
             zh: "安装命令",
@@ -3142,6 +3881,20 @@ printf ".env\\nnode_modules/\\n" > .gitignore
 # 5. Arrancar en modo desarrollo (una vez que tengas package.json, server.js y public/index.html)
 npm run dev
 # Abre http://localhost:3001 en el navegador`,
+            pt: `# 1. Criar o diretório do projeto
+mkdir xaman-backend
+cd xaman-backend
+# 2. Criar a pasta para o frontend estático
+mkdir public
+# 3. Instalar dependemcias
+npm init -e
+npm install express xumm dotenv cors
+npm install --save-dev nodemon
+# 4. Criar ou .gitignore
+printf ".env\\nnode_modules/\\n" > .gitignore
+# 5. Arrancar em modo desenvolvimento (uma vez que tengas package.json, server.js e public/index.html)
+npm run dev
+# Abra http://localhost:3001 no navegador`,
             en: `# 1. Create the project directory
 mkdir xaman-backend
 cd xaman-backend
@@ -3219,6 +3972,7 @@ npm run dev
         {
           title: {
             es: "package.json — copia y pega este archivo completo",
+            pt: "package.json — coupia e pega este arquivo completo",
             en: "package.json — copy and paste this complete file",
             jp: "package.json — このファイルをそのままコピー",
             zh: "package.json —— 直接复制整个文件",
@@ -3247,6 +4001,7 @@ npm run dev
         {
           title: {
             es: ".env — credenciales (nunca subir a git)",
+            pt: ".env — credenciais (nunca enviar a git)",
             en: ".env — credentials (never push to git)",
             jp: ".env — 認証情報（gitにpushしない）",
             zh: ".env —— 凭证（不要提交到 git）",
@@ -3257,6 +4012,11 @@ npm run dev
             es: `# Crea el archivo .env en la raíz del proyecto xaman-backend/
 # Sustituye los valores por los de tu app en apps.xaman.dev
 
+XUMM_API_KEY=tu-api-key-aqui
+XUMM_API_SECRET=tu-api-secret-aqui
+PORT=3001`,
+            pt: `# Criao arquivo .env na raíz do projeto xaman-backend/
+# Substitua os valores por os de seu app em apps.xaman.dev
 XUMM_API_KEY=tu-api-key-aqui
 XUMM_API_SECRET=tu-api-secret-aqui
 PORT=3001`,
@@ -3289,6 +4049,7 @@ PORT=3001`,
         {
           title: {
             es: "server.js — Servidor Express completo con Xaman",
+            pt: "server.js — Servidor Express completo com Xaman",
             en: "server.js — Full Express server with Xaman",
             jp: "server.js — XamanとExpressの完全なサーバー",
             zh: "server.js —— 完整的 Express + Xaman 服务端",
@@ -3442,6 +4203,131 @@ app.post("/webhook/xaman", (req, res) => {
 app.listen(PORT, () => {
   console.log(\`Servidor corriendo en http://localhost:\${PORT}\`);
   console.log(\`Abre en el navegador: http://localhost:\${PORT}\`);
+});`,
+            pt: `// server.js
+import "dotenv/config";
+import express from "express";
+import cors from "cors";
+import { Xumm } from "xumm";
+const app  = express();
+const PORT = process.env.PORT || 3001;
+// ── Middlewares ───────────────────────────────────────────────────────────────
+app.use(cors());               // permite llamadas desde o mismo origem (public/)
+app.use(express.json());
+app.use(express.static("public")); // sirve public/index.html em http://localhost:3001
+// ── SDK de Xaman (backend: API Key + API Secret) ──────────────────────────────
+const xumm = new Xumm(
+  process.env.XUMM_API_KEY,
+  process.env.XUMM_API_SECRET
+);
+// ── Rota: Login — criar payload SignIn ────────────────────────────────────────
+app.post("/api/login", async (req, res) => {
+  try {
+    const payload = await xumm.payload.create({
+      txjson: { TransactionType: "SignIn", NetworkID: 21338 },
+    });
+    // Devolver ao frontend o QR e o UUID para acompanhar o estado
+    res.json({
+      uuid: payload.uuid,
+      qrUrl: payload.refs.qr_png,
+      deepLink: payload.next.always,
+    });
+  } catch (err) {
+    console.error("Erro criando SignIn:", err);
+    res.status(500).json({ error: "Não foi possível criar o payload de login" });
+  }
+});
+// ── Rota: Verificar estado do login ──────────────────────────────────────────
+app.get("/api/login/:uuid", async (req, res) => {
+  try {
+    const payload = await xumm.payload.get(req.params.uuid);
+    if (!payload) {
+      return res.status(404).json({ error: "Payload não encontrado" });
+    }
+    const signed  = payload.meta.signed;
+    const account = payload.response?.account ?? null;
+    if (signed) {
+      res.json({ signed: true, account });
+    } else {
+      res.json({ signed: false, expired: payload.meta.expired });
+    }
+  } catch (err) {
+    res.status(500).json({ error: "Error consultando o payload" });
+  }
+});
+// ── Rota: Criar pagamento ──────────────────────────────────────────────────────────
+app.post("/api/pagamento", async (req, res) => {
+  const { origem, destino, cantidadXAH } = req.body;
+  // Validações de negocio no servidor
+  if (!origem || !destino || !cantidadXAH) {
+    return res.status(400).json({ error: "Faltam campos exigidos" });
+  }
+  if (!/^r[1-9A-HJ-NP-Za-km-z]{24,33}$/.test(destino)) {
+    return res.status(400).json({ error: "Endereço destino inválida" });
+  }
+  const quantidade = Number(cantidadXAH);
+  if (isNaN(quantidade) || quantidade <= 0) {
+    return res.status(400).json({ error: "Quantidade inválida" });
+  }
+  try {
+    const drops = String(Math.floor(quantidade * 1_000_000));
+    const payload = await xumm.payload.create({
+      txjson: {
+        TransactionType: "Payment",
+        NetworkID: 21338,
+        Account: origem,
+        Destination: destino,
+        Amount: drops,
+      },
+    });
+    res.json({
+      uuid: payload.uuid,
+      qrUrl: payload.refs.qr_png,
+      deepLink: payload.next.always,
+    });
+  } catch (err) {
+    console.error("Erro criando pagamento:", err);
+    res.status(500).json({ error: "Não foi possível criar o pagamento" });
+  }
+});
+// ── Rota: Verificar estado do pagamento ──────────────────────────────────────────
+app.get("/api/pagamento/:uuid", async (req, res) => {
+  try {
+    const payload = await xumm.payload.get(req.params.uuid);
+    if (!payload) {
+      return res.status(404).json({ error: "Payload não encontrado" });
+    }
+    const signed = payload.meta.signed;
+    const txid   = payload.response?.txid ?? null;
+    if (signed) {
+      res.json({ signed: true, txid });
+    } else {
+      res.json({ signed: false, expired: payload.meta.expired });
+    }
+  } catch (err) {
+    res.status(500).json({ error: "Error consultando o payload" });
+  }
+});
+// ── Rota: Webhook de Xaman ────────────────────────────────────────────────────
+// Configura esta URL em apps.xaman.dev → seu app → Webhook
+app.post("/webhook/xaman", (req, res) => {
+  const body = req.body;
+  console.log("Webhook recibido:", JSON.stringify(body, null, 2));
+  // Conassinar recepcioun a Xaman (importante: responder 200 rápido)
+  res.sendStatus(200);
+  // Procesar de forma assincrona
+  if (body?.payloadResponse?.signed === true) {
+    const { txid, account } = body.payloadResponse;
+    console.log(\`✅ Pagamento firmado por \${account}. TXID: \${txid}\`);
+    // Aqui você pode salvar em banco de dados, enviar email, etc.
+  } else if (body?.payloadResponse?.signed === false) {
+    console.log("❌ Pagamento rejeitado por o usuário");
+  }
+});
+// ── Arrancar servidor ─────────────────────────────────────────────────────────
+app.listen(PORT, () => {
+  console.log(\`Servidor corriendo em http://localhost:\${PORT}\`);
+  console.log(\`Abra no navegador: http://localhost:\${PORT}\`);
 });`,
             en: `// server.js
 import "dotenv/config";
@@ -3806,6 +4692,7 @@ app.listen(PORT, () => {
         {
           title: {
             es: "public/index.html — Interfaz completa (pégala en xaman-backend/public/)",
+            pt: "public/index.html — Interfaz completa (pégala em xaman-backend/public/)",
             en: "public/index.html — Full UI (paste into xaman-backend/public/)",
             jp: "public/index.html — 完全なUI（xaman-backend/public/に貼り付け）",
             zh: "public/index.html —— 完整界面（粘贴到 xaman-backend/public/）",
@@ -3990,6 +4877,179 @@ app.listen(PORT, () => {
       }
     }
 
+    function logout() {
+      clearInterval(pollTimer);
+      account = null;
+      document.getElementById("loginSection").style.display  = "block";
+      document.getElementById("paymentSection").style.display = "none";
+      document.getElementById("txResult").style.display       = "none";
+      document.getElementById("inputDestino").value  = "";
+      document.getElementById("inputCantidad").value = "";
+    }
+  </script>
+</body>
+</html>`,
+            pt: `<!DOCTYPE html>
+<html lang="é">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Xaman Backend Demo</title>
+  <style>
+    body { font-family: sans-serif; background: #080818; color: #fff;
+           max-width: 480px; margin: 0 auto; padding: 2rem; }
+    h1   { color: #c8ff00; }
+    h2   { color: #aaa; font-size: 1.1rem; margin-top: 1.5rem; }
+    button { padding: 0.6rem 1.5rem; background: #6366f1; color: #fff;
+             border: none; border-radius: 6px; cursor: pointer; font-size: 1rem; }
+    button:disabled { background: #444; cursor: not-allowed; }
+    button.danger { background: #ef4444; }
+    input { display: block; width: 100%; padding: 0.5rem; margin-bottom: 0.75rem;
+            border-radius: 6px; border: 1px solid #333; background: #111;
+            color: #fff; font-size: 0.9rem; box-sizing: border-box; }
+    .card { background: #111; border: 1px solid #444;
+            border-radius: 8px; padding: 1rem; margin-top: 1rem; }
+    .card.ok  { border-color: #4caf50; }
+    .card.err { border-color: #e53935; }
+    .error-msg { color: #ff6b6b; margin: 0.5rem 0; }
+    code  { font-family: monospace; word-break: break-all;
+            font-size: 0.8rem; color: #c8ff00; }
+    a     { color: #66ccff; }
+    img   { border-radius: 8px; display: block; margin: 0.75rem auto; }
+    hr    { border-color: #333; margin: 1.5rem 0; }
+    #paymentSection { display: none; }
+  </style>
+</head>
+<body>
+  <h1>💸 Xaman Backend Demo</h1>
+  <!-- ── LOGIN ─────────────────────────────────────────── -->
+  <div id="loginSection">
+    <p>Coméctate com Xaman para continuar.</p>
+    <button id="btnLogin" onclick="handleLogin()">🔑 Conectar com Xaman</button>
+    <div id="loginQR" class="card" style="display:none">
+      <p>Escaneie com Xaman:</p>
+      <img id="qrLoginImg" src="" alt="QR Login" width="220" />
+      <a id="deeplinkLogin" href="#" target="_blank">Abrir em Xaman (celular)</a>
+    </div>
+    <p id="loginError" class="error-msg" style="display:none"></p>
+  </div>
+  <!-- ── PAGO ──────────────────────────────────────────── -->
+  <div id="paymentSection">
+    <div class="card ok">
+      <p style="color:#4caf50; margin:0 0 6px">✅ Conectado como:</p>
+      <code id="accountDisplay"></code>
+      <br /><br />
+      <button class="danger" onclick="logout()">Desconectar</button>
+    </div>
+    <hr />
+    <h2>Enviar XAH</h2>
+    <input id="inputDestino" placeholder="Endereço destino (r...)" />
+    <input id="inputCantidad" type="number" min="0.000001" step="0.000001"
+           placeholder="Quantidade em XAH" />
+    <p id="pagamentoError" class="error-msg" style="display:none"></p>
+    <button id="btnPagamento" onclick="handlePagamento()">📤 Enviar pagamento</button>
+    <div id="pagamentoQR" class="card" style="display:none">
+      <p>Escaneie com Xaman para assinar:</p>
+      <img id="qrPagamentoImg" src="" alt="QR Pagamento" width="220" />
+      <a id="deeplinkPagamento" href="#" target="_blank">Abrir em Xaman (celular)</a>
+    </div>
+    <div id="txResult" class="card ok" style="display:none">
+      <p style="color:#4caf50; margin:0 0 6px">✅ <strong>¡Pagamento confirmado!</strong></p>
+      <p style="color:#ccc; font-size:0.85rem; margin:0 0 4px">Hash da transação:</p>
+      <code id="txidDisplay"></code><br /><br />
+      <a id="explorerLink" href="#" target="_blank">🔍 Ver em Xaman Explorer</a>
+    </div>
+  </div>
+  <script>
+    const API = "/api";   // mesma origin — não é necessária URL absoluta
+    let account = null;
+    let pollTimer = null;
+    function setBtn(id, loading, label) {
+      const b = document.getElementById(id);
+      b.disabled = loading;
+      if (label) b.textContent = loading ? "Esperando..." : label;
+    }
+    function showErr(id, msg) {
+      const o = document.getElementById(id);
+      o.style.display = msg ? "block" : "none";
+      o.textContent = msg || "";
+    }
+    function startPoll(uuid, rota, onDone) {
+      pollTimer = setInterval(async () => {
+        try {
+          const r = await fetch(API + "/" + rota + "/" + uuid);
+          const data = await r.json();
+          if (data.signed || data.expired) {
+            clearInterval(pollTimer);
+            onDone(data);
+          }
+        } catch (e) { /* rede temporalmente caída — tente novamente */ }
+      }, 2000);
+    }
+    async function handleLogin() {
+      setBtn("btnLogin", true, "🔑 Conectar com Xaman");
+      showErr("loginError", "");
+      try {
+        const r = await fetch(API + "/login", { method: "POST" });
+        const { uuid, qrUrl, deepLink } = await r.json();
+        document.getElementById("qrLoginImg").src = qrUrl;
+        document.getElementById("deeplinkLogin").href = deepLink;
+        document.getElementById("loginQR").style.display = "block";
+        startPoll(uuid, "login", (data) => {
+          document.getElementById("loginQR").style.display = "none";
+          setBtn("btnLogin", false, "🔑 Conectar com Xaman");
+          if (data.signed) {
+            account = data.account;
+            document.getElementById("accountDisplay").textContent = account;
+            document.getElementById("loginSection").style.display = "none";
+            document.getElementById("paymentSection").style.display = "block";
+          } else {
+            showErr("loginError", "Login expirado ou rejeitado");
+          }
+        });
+      } catch (err) {
+        showErr("loginError", "Error: " + err.message);
+        setBtn("btnLogin", false, "🔑 Conectar com Xaman");
+      }
+    }
+    async function handlePagamento() {
+      const destino  = document.getElementById("inputDestino").value.trim();
+      const quantidade = document.getElementById("inputCantidad").value;
+      showErr("pagamentoError", "");
+      document.getElementById("txResult").style.display = "none";
+      setBtn("btnPagamento", true, "📤 Enviar pagamento");
+      try {
+        const r = await fetch(API + "/pagamento", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ origem: account, destino, cantidadXAH: Number(quantidade) }),
+        });
+        const data = await r.json();
+        if (!r.ok) {
+          showErr("pagamentoError", data.error || "Error criando o pagamento");
+          setBtn("btnPagamento", false, "📤 Enviar pagamento");
+          return;
+        }
+        document.getElementById("qrPagamentoImg").src = data.qrUrl;
+        document.getElementById("deeplinkPagamento").href = data.deepLink;
+        document.getElementById("pagamentoQR").style.display = "block";
+        startPoll(data.uuid, "pagamento", (res) => {
+          document.getElementById("pagamentoQR").style.display = "none";
+          setBtn("btnPagamento", false, "📤 Enviar pagamento");
+          if (res.signed) {
+            document.getElementById("txidDisplay").textContent = res.txid;
+            document.getElementById("explorerLink").href =
+              "https://xaman.app/explorer/21338/" + res.txid;
+            document.getElementById("txResult").style.display = "block";
+          } else {
+            showErr("pagamentoError", "Pagamento rejeitado ou expirado");
+          }
+        });
+      } catch (err) {
+        showErr("pagamentoError", "Error: " + err.message);
+        setBtn("btnPagamento", false, "📤 Enviar pagamento");
+      }
+    }
     function logout() {
       clearInterval(pollTimer);
       account = null;
@@ -4616,6 +5676,7 @@ app.listen(PORT, () => {
         {
           title: {
             es: "src/App.jsx — Frontend React que consume el backend",
+            pt: "src/App.jsx — Frontend React que consome o backend",
             en: "src/App.jsx — React frontend consuming the backend",
             jp: "src/App.jsx — バックエンドを使用するReactフロントエンド（ステータスポーリング）",
             zh: "src/App.jsx —— 使用后端的 React 前端",
@@ -4776,6 +5837,149 @@ export default function App() {
             style={{ display: "block", width: 200, padding: 8, marginBottom: 8 }}
           />
           {error && <p style={{ color: "red" }}>{error}</p>}
+          <button type="submit" disabled={loading}>
+            {loading ? "Esperando..." : "📤 Enviar"}
+          </button>
+        </form>
+      )}
+    </div>
+  );
+}`,
+            pt: `// src/App.jsx — Frontend que usa o backend para criar payloads
+import { useState } from "react";
+const API = "http://localhost:3001/api";
+// Espera com polling até que o payload esteja assinado ou expirado
+async function esperarFirma(uuid, rutaEstado, intervalMs = 2000) {
+  return new Promise((resolve) => {
+    const intervalo = setInterval(async () => {
+      try {
+        const resp = await fetch(\`\${API}/\${rutaEstado}/\${uuid}\`);
+        const data = await resp.json();
+        if (data.signed || data.expired) {
+          clearInterval(intervalo);
+          resolve(data);
+        }
+      } catch (err) {
+        console.error("Erro polling:", err);
+      }
+    }, intervalMs);
+  });
+}
+export default function App() {
+  const [account, setAccount]   = useState(null);
+  const [qrUrl, setQrUrl]       = useState(null);
+  const [deepLink, setDeepLink] = useState(null);
+  const [destino, setDestino]   = useState("");
+  const [quantidade, setCantidad] = useState("");
+  const [txid, setTxid]         = useState(null);
+  const [loading, setLoading]   = useState(false);
+  const [error, setError]       = useState(null);
+  // ── Login com QR via backend ────────────────────────────────────────────────
+  async function handleLogin() {
+    setLoading(true);
+    setError(null);
+    const resp = await fetch(\`\${API}/login\`, { method: "POST" });
+    const { uuid, qrUrl: url, deepLink: link } = await resp.json();
+    setQrUrl(url);
+    setDeepLink(link);
+    // Polling: cada 2s pergunta ao backend se o usuário já firmou
+    const resultado = await esperarFirma(uuid, "login");
+    setQrUrl(null);
+    setDeepLink(null);
+    if (resultado.signed) {
+      setAccount(resultado.account);
+    } else {
+      setError("Login expirado ou rejeitado");
+    }
+    setLoading(false);
+  }
+  // ── Enviar pagamento via backend ─────────────────────────────────────────────────
+  async function handlePagamento(e) {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    setTxid(null);
+    const resp = await fetch(\`\${API}/pagamento\`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        origem: account,
+        destino,
+        cantidadXAH: Number(quantidade),
+      }),
+    });
+    if (!resp.ok) {
+      const { error: msg } = await resp.json();
+      setError(msg);
+      setLoading(false);
+      return;
+    }
+    const { uuid, qrUrl: url, deepLink: link } = await resp.json();
+    setQrUrl(url);
+    setDeepLink(link);
+    // Polling até assinatura ou expiração
+    const resultado = await esperarFirma(uuid, "pagamento");
+    setQrUrl(null);
+    setDeepLink(null);
+    if (resultado.signed) {
+      setTxid(resultado.txid);
+    } else {
+      setError("Pagamento rejeitado ou expirado");
+    }
+    setLoading(false);
+  }
+  if (!account) {
+    return (
+      <div style={{ padding: 32, fontFamily: "sans-serif" }}>
+        <h1>💸 Xahau Payment (Backend)</h1>
+        {qrUrl ? (
+          <>
+            <img src={qrUrl} alt="QR Login" width={220} />
+            <br />
+            <a href={deepLink}>Abrir em Xaman</a>
+          </>
+        ) : (
+          <button onClick={handleLogin} disabled={loading}>
+            🔑 Conectar com Xaman
+          </button>
+        )}
+        {error && <p style={{ color: "rede" }}>{error}</p>}
+      </div>
+    );
+  }
+  return (
+    <div style={{ padding: 32, fontFamily: "sans-serif" }}>
+      <h1>💸 Xahau Payment (Backend)</h1>
+      <p>
+        Conectado: <code>{account}</code>{" "}
+        <button onClick={() => setAccount(null)}>Salir</button>
+      </p>
+      <hr />
+      {qrUrl && (
+        <div>
+          <p>Escaneie em Xaman para assinar o pagamento:</p>
+          <img src={qrUrl} alt="QR Pagamento" width={220} />
+          <br /><a href={deepLink}>Abrir em Xaman (celular)</a>
+        </div>
+      )}
+      {txid && (
+        <p>✅ Pagamento enviado! TXID: <code>{txid}</code></p>
+      )}
+      {!qrUrl && !txid && (
+        <form onSubmit={handlePagamento}>
+          <h2>Enviar XAH</h2>
+          <input
+            placeholder="Endereço destino"
+            value={destino}
+            onChange={e => setDestino(e.target.value)}
+            style={{ display: "block", width: 340, padding: 8, marginBottom: 8 }}
+          />
+          <input
+            type="number" placeholder="Quantidade em XAH" min="0.000001"
+            value={quantidade} onChange={e => setCantidad(e.target.value)}
+            style={{ display: "block", width: 200, padding: 8, marginBottom: 8 }}
+          />
+          {error && <p style={{ color: "rede" }}>{error}</p>}
           <button type="submit" disabled={loading}>
             {loading ? "Esperando..." : "📤 Enviar"}
           </button>
@@ -5343,6 +6547,7 @@ export default function App() {
         {
           title: {
             es: "Frontend vs Backend: cuándo usar cada uno",
+            pt: "Frontend vs Backend: quando usar cada um",
             en: "Frontend vs Backend: when to use each",
             jp: "フロントエンド対バックエンド：使い分け",
             zh: "Frontend vs Backend：什么时候用哪一种",
@@ -5350,6 +6555,7 @@ export default function App() {
           },
           content: {
             es: "Frontend (solo API Key)\n• Apps simples, demos, prototipos\n• Sin lógica de negocio compleja\n• El SDK crea los payloads en el navegador\n\nBackend (API Key + Secret)\n• Aplicaciones de producción\n• Validación y auditoría del servidor\n• Webhooks para notificaciones\n• Integración con base de datos",
+            pt: "Frontend (apenas API Key)\n• Apps simples, demos, protótipos\n• Sem lógica de negócio complexa\n• O SDK cria os payloads no navegador\n\nBackend (API Key + Secret)\n• Aplicações de produção\n• Validação e auditoria do servidor\n• Webhooks para notificações\n• Integração com banco de dados",
             en: "Frontend (API Key only)\n• Simple apps, demos, prototypes\n• No complex business logic\n• SDK creates payloads in browser\n\nBackend (API Key + Secret)\n• Production applications\n• Server-side validation and audit\n• Webhooks for notifications\n• Database integration",
             jp: "フロントエンド（APIキーのみ）\n• シンプルなアプリ、デモ、プロトタイプ\n• 複雑なビジネスロジックなし\n• SDKがブラウザでペイロードを作成\n\nバックエンド（APIキー＋シークレット）\n• 本番アプリケーション\n• サーバーサイドの検証と監査\n• 通知用Webhook\n• データベース連携",
             zh: "Frontend（仅 API Key）\n• 简单应用、演示、原型\n• 没有复杂业务逻辑\n• SDK 在浏览器中创建 payload\n\nBackend（API Key + Secret）\n• 生产环境应用\n• 服务器侧校验与审计\n• 用 Webhook 接收通知\n• 便于集成数据库",
@@ -5360,6 +6566,7 @@ export default function App() {
         {
           title: {
             es: "Arquitectura: frontend + backend + Xaman",
+            pt: "Arquitectura: frontend + backend + Xaman",
             en: "Architecture: frontend + backend + Xaman",
             jp: "アーキテクチャ：フロントエンド＋バックエンド＋Xaman",
             zh: "架构：前端 + 后端 + Xaman",
@@ -5367,6 +6574,7 @@ export default function App() {
           },
           content: {
             es: "Flujo de datos completo:\n\n1. React → POST /api/pago → Express\n2. Express → crear payload → Xaman API\n3. Xaman API → uuid + QR → Express\n4. Express → qrUrl → React\n5. React muestra QR al usuario\n6. Usuario firma en Xaman app\n7. Xaman → webhook → Express\n8. Express guarda txid en BD",
+            pt: "Fluxo de dados completo:\n\n1. React → POST /api/pagamento → Express\n2. Express → criar payload → Xaman API\n3. Xaman API → uuid + QR → Express\n4. Express → qrUrl → React\n5. React mostra QR ao usuário\n6. Usuário assina em Xaman app\n7. Xaman → webhook → Express\n8. Express salva txid em BD",
             en: "Complete data flow:\n\n1. React → POST /api/pago → Express\n2. Express → create payload → Xaman API\n3. Xaman API → uuid + QR → Express\n4. Express → qrUrl → React\n5. React shows QR to user\n6. User signs in Xaman app\n7. Xaman → webhook → Express\n8. Express saves txid to DB",
             jp: "完全なデータフロー：\n\n1. React → POST /api/pago → Express\n2. Express → ペイロード作成 → Xaman API\n3. Xaman API → uuid + QR → Express\n4. Express → qrUrl → React\n5. ReactがユーザーにQRを表示\n6. ユーザーがXamanアプリで署名\n7. Xaman → webhook → Express\n8. ExpressがtxidをDBに保存",
             zh: "完整的数据流：\n\n1. React → POST /api/payment → Express\n2. Express → 创建 payload → Xaman API\n3. Xaman API → uuid + QR → Express\n4. Express → qrUrl → React\n5. React 向用户显示二维码\n6. 用户在 Xaman 应用中签名\n7. Xaman → webhook → Express\n8. Express 将 txid 保存到数据库",
@@ -5377,6 +6585,7 @@ export default function App() {
         {
           title: {
             es: "Webhooks: recibir la firma en el servidor",
+            pt: "Webhooks: receber a assinatura no servidor",
             en: "Webhooks: receive the signature on the server",
             jp: "Webhook：サーバーで署名を受信",
             zh: "Webhook：在服务器端接收签名",
@@ -5384,6 +6593,7 @@ export default function App() {
           },
           content: {
             es: "Configura tu webhook en apps.xaman.dev\n\nXaman llama a tu endpoint cuando:\n• El usuario firma el payload ✅\n• El usuario rechaza el payload ❌\n• El payload expira ⏰\n\nTu servidor debe responder 200 rápido\nProcesa la lógica de forma asíncrona\nUsa ngrok para probar en local",
+            pt: "Configura seu webhook em apps.xaman.dev\n\nXaman chama seu endpoint quando:\n• O usuário assina o payload ✅\n• O usuário rejeita o payload ❌\n• O payload expira ⏰\n\nSeu servidor deve responder 200 rápido\nProcessa lógica de forma assincrona\nUsa ngrok para testar localmente",
             en: "Configure your webhook at apps.xaman.dev\n\nXaman calls your endpoint when:\n• User signs the payload ✅\n• User rejects the payload ❌\n• Payload expires ⏰\n\nYour server must respond 200 quickly\nProcess logic asynchronously\nUse ngrok to test locally",
             jp: "apps.xaman.devでWebhookを設定\n\nXamanがエンドポイントを呼び出す時：\n• ユーザーがペイロードに署名 ✅\n• ユーザーがペイロードを拒否 ❌\n• ペイロードが期限切れ ⏰\n\nサーバーは素早く200で応答する必要あり\nロジックは非同期で処理\nローカルテストにはngrokを使用",
             zh: "在 apps.xaman.dev 中配置你的 webhook\n\nXaman 会在以下情况调用你的端点：\n• 用户签署 payload ✅\n• 用户拒绝 payload ❌\n• payload 过期 ⏰\n\n服务器应尽快返回 200\n业务逻辑异步处理\n本地测试可使用 ngrok",

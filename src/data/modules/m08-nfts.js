@@ -3,6 +3,7 @@ export default {
   icon: "🎨",
   title: {
     es: "Creación y uso de NFTs",
+    pt: "Creación e uso de NFTs",
     en: "Creating and Using NFTs",
     jp: "NFTの作成と使用",
     ko: "NFT 생성 및 사용",
@@ -13,6 +14,7 @@ export default {
       id: "m7l1",
       title: {
         es: "URITokens: NFTs nativos en Xahau",
+        pt: "URITokens: NFTs nativos na Xahau",
         en: "URITokens: Native NFTs on Xahau",
         jp: "URITokens：XahauのネイティブNFT",
         ko: "URITokens: Xahau의 네이티브 NFT",
@@ -52,6 +54,31 @@ Un URIToken es un objeto **único** en el ledger que contiene:
 ### Flags de URITokenMint
 
 - **tfBurnable (1)**: Permite que el emisor pueda quemar el token aunque ya no sea el propietario`,
+        pt: `Em Xahau, os NFTs são implementados como **URITokens**, objetos nativos do ledger que representam tokens não fungíveis com uma URI associada.
+### OU que é um URIToken?
+Um URIToken é um objeto **único** no ledger que contém:
+- **ID**: Identificador único do token (LedgerIndex)
+- **URI**: Um link a os metadados ou conteúdo do NFT (imagen, JSON, etc.)
+- **Digest**: Hash opcional do conteúdo ao qual aponta a URI (para verificar integridade)
+- **Owner**: A conta proprietária atual
+- **Issuer**: A conta que lo criou originalmente
+### URIToken vs ERC-721
+| Característica | ERC-721 (Ethereum) | URIToken (Xahau) |
+|---|---|---|
+| Criar colección | Fazer deploy de contrato Solidity | Não necessário |
+| Mintear NFT | Função do contrato | Transação \`URITokenMint\` |
+| Transferir | Função do contrato | Transação \`URITokenBuy\` |
+| Metadata | tokenURI em contrato | URI nativa no objeto |
+| Custo | Gas costoso | Fee mínimo (~12 drops) |
+| Verificação | Depende do contrato | Digest nativo no ledger |
+### Transações relacionadas com URITokens
+- **URITokenMint**: Criar um novo URIToken
+- **URITokenBurn**: Destruir um URIToken
+- **URITokenCreateSellOffer**: Colocar um URIToken à venda
+- **URITokenCancelSellOffer**: Cancelar a oferta de venda
+- **URITokenBuy**: Comprar um URIToken que está à venda
+### Flags de URITokenMint
+- **tfBurnable (1)**: Permite que o emissor possa queimar o token mesmo que já não seja o proprietário`,
         en: `On Xahau, NFTs are implemented as **URITokens**, native ledger objects that represent non-fungible tokens with an associated URI.
 
 ### What Is a URIToken?
@@ -189,6 +216,7 @@ URIToken 是账本中的一个**唯一**对象，包含：
         {
           title: {
             es: "Crear (mintear) un URIToken",
+            pt: "Criar (mintar) um URIToken",
             en: "Create (Mint) a URIToken",
             jp: "URITokenを作成（ミント）する",
             ko: "URIToken 생성 (민팅)",
@@ -242,6 +270,42 @@ async function mintURIToken() {
   await client.disconnect();
 }
 
+mintURIToken();`,
+            pt: `require("dotenv").config();
+const { Client, Wallet } = require("xahau");
+function toHex(str) {
+  return Buffer.from(str, "utf8").toString("hex").toUpperCase();
+}
+async function mintURIToken() {
+  const client = new Client("wss://xahau-test.net");
+  await client.connect();
+  const criator = Wallet.fromSeed(process.env.WALLET_SEED, {algorithm: 'secp256k1'});
+  // Criar um URIToken com uma URI que apuntà os metadados
+  const mint = {
+    TransactionType: "URITokenMint",
+    Account: criator.address,
+    // URI de exemplo (pode ser IPFS, HTTPS, etc.) - Exemplo: ipfs://bafybeieza5w4rkes55paw7jgpo4kzsbyywhw7ildltk3kjx2ttkmt7texa/106.json
+    URI: toHex("https://exemplo.com/nft/metadata.json"),
+    Flags: 1, // tfBurnable: o emissor pode queimar o token
+  };
+  const prepared = await client.autofill(mint);
+  const signed = criator.sign(prepared);
+  const result = await client.submitAndWait(signed.tx_blob);
+  console.log("Resultado:", result.result.meta.TransactionResult);
+  if (result.result.meta.TransactionResult === "tesSUCCESS") {
+    console.log("¡URIToken criado com éxito!");
+    console.log("Hash tx:", signed.hash);
+    // Buscar ou URIToken criado nos nós afetados
+    const criated = result.result.meta.AffectedNodes.find(
+      (n) => n.CreatedNode?.LedgerEntryType === "URIToken"
+    );
+    if (criated) {
+      console.log("URIToken ID:", criated.CreatedNode.LedgerIndex);
+      console.log("Address:", criator.address);
+    }
+  }
+  await client.disconnect();
+}
 mintURIToken();`,
             en: `require("dotenv").config();
 const { Client, Wallet } = require("xahau");
@@ -435,6 +499,7 @@ mintURIToken();`,
         {
           title: {
             es: "Consultar los URITokens de una cuenta",
+            pt: "Consultar os URITokens de uma conta",
             en: "Query URITokens for an Account",
             jp: "アカウントのURITokenを照会する",
             ko: "계정의 URIToken 조회",
@@ -477,6 +542,37 @@ async function getURITokens(address) {
   await client.disconnect();
 }
 // Reemplaza con la dirección que quieres consultar, por ejemplo r9oB9E7jnRjp88fTrxHzngAietepwCCcqV
+getURITokens("rTuDireccionAqui");`,
+            pt: `const { Client } = require("xahau");
+async function getURITokens(address) {
+  const client = new Client("wss://xahau-test.net");
+  await client.connect();
+  const response = await client.request({
+    command: "account_objects",
+    account: address,
+    type: "uri_token",
+    ledger_index: "validated",
+  });
+  const tokens = response.result.account_objects;
+  console.log(\`=== URITokens de \${address} ===\`);
+  console.log(\`Total: \${tokens.length}\\n\`);
+  for (const token of tokens) {
+    const uri = Buffer.from(token.URI, "hex").toString("utf8");
+    console.log(\`URIToken ID: \${token.index}\`);
+    console.log(\`  URI: \${uri}\`);
+    console.log(\`  Emissor: \${token.Issuer}\`);
+    console.log(\`  Owner: \${token.Owner}\`);
+    if (token.Digest) {
+      console.log(\`  Digest: \${token.Digest}\`);
+    }
+    if (token.Amount) {
+      console.log(\`  Em venda por: \${Number(token.Amount) / 1_000_000} XAH\`);
+    }
+    console.log();
+  }
+  await client.disconnect();
+}
+// Substitua com o endereçou que quieres consultar, por exemplo r9oB9E7jnRjp88fTrxHzngAietepwCCcqV
 getURITokens("rTuDireccionAqui");`,
             en: `const { Client } = require("xahau");
 
@@ -627,9 +723,10 @@ getURITokens("rYourAddressHere");`,
       ],
       slides: [
         {
-          title: { es: "URITokens en Xahau", en: "URITokens on Xahau", jp: "XahauのURIToken", ko: "Xahau의 URIToken", zh: "Xahau 上的 URIToken" },
+          title: { es: "URITokens en Xahau", pt: "URITokens na Xahau", en: "URITokens on Xahau", jp: "XahauのURIToken", ko: "Xahau의 URIToken", zh: "Xahau 上的 URIToken" },
           content: {
             es: "NFTs nativos del ledger de Xahau\n\n• URI → Enlace a metadatos\n• Digest → Hash de verificación\n• Owner → Propietario actual\n• Issuer → Creador original\n\nSin necesidad de smart contracts",
+            pt: "NFTs nativos do ledger da Xahau\n\n• URI → Enlace a metadados\n• Digest → Hash de verificação\n• Owner → Proprietário atual\n• Issuer → Creador original\n\nSin necessidade de smart contracts",
             en: "Native NFTs on the Xahau ledger\n\n• URI → Link to metadata\n• Digest → Verification hash\n• Owner → Current owner\n• Issuer → Original creator\n\nNo smart contracts needed",
             jp: "Xahauレジャーのネイティブ NFT\n\n• URI → メタデータへのリンク\n• Digest → 検証ハッシュ\n• Owner → 現在の所有者\n• Issuer → 元の作成者\n\nスマートコントラクト不要",
             ko: "Xahau 레저의 네이티브 NFT\n\n• URI → 메타데이터 링크\n• Digest → 검증 해시\n• Owner → 현재 소유자\n• Issuer → 최초 생성자\n\n스마트 컨트랙트 불필요",
@@ -638,9 +735,10 @@ getURITokens("rYourAddressHere");`,
           visual: "🎨",
         },
         {
-          title: { es: "Operaciones con URITokens", en: "URIToken Operations", jp: "URITokenの操作", ko: "URIToken 작업", zh: "URIToken 操作" },
+          title: { es: "Operaciones con URITokens", pt: "Operações com URITokens", en: "URIToken Operations", jp: "URITokenの操作", ko: "URIToken 작업", zh: "URIToken 操作" },
           content: {
             es: "• URITokenMint → Crear NFT\n• URITokenBurn → Destruir NFT\n• URITokenCreateSellOffer → Vender\n• URITokenCancelSellOffer → Cancelar venta\n• URITokenBuy → Comprar",
+            pt: "• URITokenMint → Criar NFT\n• URITokenBurn → Destruir NFT\n• URITokenCreateSellOffer → Vender\n• URITokenCancelSellOffer → Cancelar venda\n• URITokenBuy → Comprar",
             en: "• URITokenMint → Create NFT\n• URITokenBurn → Destroy NFT\n• URITokenCreateSellOffer → Sell\n• URITokenCancelSellOffer → Cancel sale\n• URITokenBuy → Buy",
             jp: "• URITokenMint → NFTを作成\n• URITokenBurn → NFTを破棄\n• URITokenCreateSellOffer → 売りに出す\n• URITokenCancelSellOffer → 売りをキャンセル\n• URITokenBuy → 購入する",
             ko: "• URITokenMint → NFT 생성\n• URITokenBurn → NFT 소각\n• URITokenCreateSellOffer → 판매 등록\n• URITokenCancelSellOffer → 판매 취소\n• URITokenBuy → 구매",
@@ -649,9 +747,10 @@ getURITokens("rYourAddressHere");`,
           visual: "🔧",
         },
         {
-          title: { es: "URIToken vs ERC-721", en: "URIToken vs ERC-721", jp: "URIToken vs ERC-721", ko: "URIToken vs ERC-721", zh: "URIToken vs ERC-721" },
+          title: { es: "URIToken vs ERC-721", pt: "URIToken vs ERC-721", en: "URIToken vs ERC-721", jp: "URIToken vs ERC-721", ko: "URIToken vs ERC-721", zh: "URIToken vs ERC-721" },
           content: {
             es: "URIToken (Xahau):\n• Nativo del ledger, sin contratos\n• Fee mínimo (~12 drops)\n• Digest nativo para verificación\n\nERC-721 (Ethereum):\n• Requiere contrato Solidity\n• Gas costoso y variable\n• Verificación depende del contrato",
+            pt: "URIToken (Xahau):\n• Nativo do ledger, sem contratos\n• Fee mínimo (~12 drops)\n• Digest nativo para verificação\n\nERC-721 (Ethereum):\n• Requer contrato Solidity\n• Gas costoso e variável\n• Verificação depende do contrato",
             en: "URIToken (Xahau):\n• Native to the ledger, no contracts\n• Minimal fee (~12 drops)\n• Native Digest for verification\n\nERC-721 (Ethereum):\n• Requires Solidity contract\n• Expensive and variable gas\n• Verification depends on contract",
             jp: "URIToken（Xahau）：\n• レジャーネイティブ、コントラクト不要\n• 最小限のFee（〜12 drops）\n• 検証用のネイティブDigest\n\nERC-721（Ethereum）：\n• Solidityコントラクトが必要\n• 高価で変動するガス代\n• 検証はコントラクトに依存",
             ko: "URIToken (Xahau):\n• 레저 네이티브, 컨트랙트 불필요\n• 최소 수수료 (~12 drops)\n• 검증을 위한 네이티브 Digest\n\nERC-721 (Ethereum):\n• Solidity 컨트랙트 필요\n• 비싸고 가변적인 가스비\n• 검증이 컨트랙트에 의존",
@@ -665,6 +764,7 @@ getURITokens("rYourAddressHere");`,
       id: "m7l2",
       title: {
         es: "Compra-venta de URITokens",
+        pt: "Compra-venda de URITokens",
         en: "Buying and Selling URITokens",
         jp: "URITokenの売買",
         ko: "URIToken 매매",
@@ -690,6 +790,17 @@ Para transferir un URIToken sin coste (regalar), puedes crear una oferta de vent
 ### Quemar un URIToken
 
 El propietario actual siempre puede quemar (destruir) su URIToken con \`URITokenBurn\`. Si el token fue creado con el flag \`tfBurnable\`, el emisor original también puede quemarlo.`,
+        pt: `Xahau inclui um sistema nativo para a compra-venda de URITokens, sem necessidade de marketplaces externos nem smart contracts.
+### Fluxo de venda
+1. O proprietário cria uma **oferta de venda** com \`URITokenCreateSellOffer\`, indicando o precio em XAH ou em outra divisa.
+2. Qualquer pessoa pode **comprar** o URIToken com \`URITokenBuy\`, pagando o preço definido
+3. O proprietário pode **cancelar** a oferta com \`URITokenCancelSellOffer\`
+### Vendà um destinatario específico
+Você pode criar uma oferta de venda direcionada a uma conta específica usando o campo \`Destination\`. Somente essa conta poderá comprar o URIToken.
+### Transferencia gratuita
+Para transferir um URIToken sem custo (presentear), você pode criar uma oferta de venda com \`Amount: "0"\` e um \`Destination\` específico.
+### Queimar um URIToken
+O proprietário atual sempre pode queimar (destruir) seu URIToken com \`URITokenBurn\`. Se o token foi criado com o flag \`tfBurnable\`, o emissor original também pode queimarlo.`,
         en: `Xahau includes a native system for buying and selling URITokens, with no need for external marketplaces or smart contracts.
 
 ### Sale Flow
@@ -771,6 +882,7 @@ URIToken을 비용 없이 전송(선물)하려면 \`Amount: "0"\`과 특정 \`De
         {
           title: {
             es: "Poner un URIToken a la venta",
+            pt: "Colocar um URIToken à venda",
             en: "List a URIToken for Sale",
             jp: "URITokenを売りに出す",
             ko: "URIToken 판매 등록",
@@ -808,6 +920,29 @@ async function sellURIToken() {
   await client.disconnect();
 }
 
+sellURIToken();`,
+            pt: `require("dotenv").config();
+const { Client, Wallet, xahToDrops } = require("xahau");
+async function sellURIToken() {
+  const client = new Client("wss://xahau-test.net");
+  await client.connect();
+  const owner = Wallet.fromSeed(process.env.WALLET_SEED, {algorithm: 'secp256k1'});
+  // Criar oferta de venda por 50 XAH
+  const sellOffer = {
+    TransactionType: "URITokenCreateSellOffer",
+    Account: owner.address,
+    URITokenID: "TU_URITOKEN_ID_AQUI", // ID do URIToken a vender
+    Amount: xahToDrops(5), // Precio: 5 XAH
+  };
+  const prepared = await client.autofill(sellOffer);
+  const signed = owner.sign(prepared);
+  const result = await client.submitAndWait(signed.tx_blob);
+  console.log("Resultado:", result.result.meta.TransactionResult);
+  if (result.result.meta.TransactionResult === "tesSUCCESS") {
+    console.log("¡URIToken puesto à venda por 5 XAH!");
+  }
+  await client.disconnect();
+}
 sellURIToken();`,
             en: `require("dotenv").config();
 const { Client, Wallet, xahToDrops } = require("xahau");
@@ -938,6 +1073,7 @@ sellURIToken();`,
         {
           title: {
             es: "Comprar un URIToken que está a la venta",
+            pt: "Comprar um URIToken que está à venda",
             en: "Buy a URIToken That Is Listed for Sale",
             jp: "売りに出ているURITokenを購入する",
             ko: "판매 중인 URIToken 구매",
@@ -977,6 +1113,31 @@ async function buyURIToken() {
   await client.disconnect();
 }
 
+buyURIToken();`,
+            pt: `require("dotenv").config();
+const { Client, Wallet, xahToDrops } = require("xahau");
+async function buyURIToken() {
+  const client = new Client("wss://xahau-test.net");
+  await client.connect();
+  const buyer = Wallet.fromSeed(process.env.BUYER_SEED, {algorithm: 'secp256k1'});
+  // Comprar ou URIToken pagando ou precio de venda
+  const buy = {
+    TransactionType: "URITokenBuy",
+    Account: buyer.address,
+    URITokenID: "TU_URITOKEN_ID_AQUI", // ID do URIToken a comprar
+    Amount: xahToDrops(5), // Deve coincidir com o precio de venda
+  };
+  const prepared = await client.autofill(buy);
+  const signed = buyer.sign(prepared);
+  const result = await client.submitAndWait(signed.tx_blob);
+  console.log("Resultado:", result.result.meta.TransactionResult);
+  if (result.result.meta.TransactionResult === "tesSUCCESS") {
+    console.log("¡URIToken comprado com éxito!");
+    console.log("O NFT ahora é tuyo.");
+        console.log("Endereçou do comprador:", buyer.address);
+  }
+  await client.disconnect();
+}
 buyURIToken();`,
             en: `require("dotenv").config();
 const { Client, Wallet, xahToDrops } = require("xahau");
@@ -1115,9 +1276,10 @@ buyURIToken();`,
       ],
       slides: [
         {
-          title: { es: "Flujo de venta", en: "Sale Flow", jp: "売却フロー", ko: "판매 흐름", zh: "出售流程" },
+          title: { es: "Flujo de venta", pt: "Fluxo de venda", en: "Sale Flow", jp: "売却フロー", ko: "판매 흐름", zh: "出售流程" },
           content: {
             es: "1️⃣ URITokenCreateSellOffer → Poner precio\n2️⃣ URITokenBuy → Comprador paga\n3️⃣ Transferencia automática\n\nTodo nativo, sin marketplace externo",
+            pt: "1️⃣ URITokenCreateSellOffer → Colocar precio\n2️⃣ URITokenBuy → Comprador paga\n3️⃣ Transferencia automática\n\nTodo nativo, sem marketplace externo",
             en: "1️⃣ URITokenCreateSellOffer → Set price\n2️⃣ URITokenBuy → Buyer pays\n3️⃣ Automatic transfer\n\nAll native, no external marketplace",
             jp: "1️⃣ URITokenCreateSellOffer → 価格を設定\n2️⃣ URITokenBuy → 購入者が支払う\n3️⃣ 自動転送\n\nすべてネイティブ、外部マーケットプレイス不要",
             ko: "1️⃣ URITokenCreateSellOffer → 가격 설정\n2️⃣ URITokenBuy → 구매자 지불\n3️⃣ 자동 전송\n\n모두 네이티브, 외부 마켓플레이스 불필요",
@@ -1126,9 +1288,10 @@ buyURIToken();`,
           visual: "💰",
         },
         {
-          title: { es: "Transferir y quemar", en: "Transfer and Burn", jp: "転送とバーン", ko: "전송과 소각", zh: "转移与销毁" },
+          title: { es: "Transferir y quemar", pt: "Transferir e queimar", en: "Transfer and Burn", jp: "転送とバーン", ko: "전송과 소각", zh: "转移与销毁" },
           content: {
             es: "Transferir gratis:\n• SellOffer con Amount: 0 + Destination\n\nQuemar (destruir):\n• URITokenBurn por el propietario\n• O por el emisor si tiene flag tfBurnable",
+            pt: "Transferir grátis:\n• SellOffer com Amount: 0 + Destination\n\nQueimar (destruir):\n• URITokenBurn por ou proprietário\n• OU por o emissor se tem flag tfBurnable",
             en: "Free transfer:\n• SellOffer with Amount: 0 + Destination\n\nBurn (destroy):\n• URITokenBurn by the owner\n• Or by the issuer if tfBurnable flag is set",
             jp: "無料転送：\n• Amount: 0 + DestinationのSellOffer\n\nバーン（破棄）：\n• 所有者によるURITokenBurn\n• またはtfBurnableフラグがあれば発行者も可",
             ko: "무료 전송:\n• Amount: 0 + Destination의 SellOffer\n\n소각 (파괴):\n• 소유자에 의한 URITokenBurn\n• 또는 tfBurnable 플래그가 있으면 발행자도 가능",
@@ -1137,9 +1300,10 @@ buyURIToken();`,
           visual: "🔥",
         },
         {
-          title: { es: "Quemar URITokens en detalle", en: "Burning URITokens in Detail", jp: "URITokenのバーンの詳細", ko: "URIToken 소각 상세", zh: "URIToken 销毁详解" },
+          title: { es: "Quemar URITokens en detalle", pt: "Queimar URITokens em detalhe", en: "Burning URITokens in Detail", jp: "URITokenのバーンの詳細", ko: "URIToken 소각 상세", zh: "URIToken 销毁详解" },
           content: {
             es: "Flag tfBurnable (1) al mintear:\n• Permite al emisor quemar el token\n• Incluso si ya no es propietario\n\nSin tfBurnable:\n• Solo el propietario actual puede quemar\n\nUsos: eliminar errores de minteo,\ncontenido expirado, tokens revocables",
+            pt: "Flag tfBurnable (1) ao mintar:\n• Permite ao emissor queimar ou token\n• Incluso se já não é proprietário\n\nSin tfBurnable:\n• Apenas ou proprietário atual pode queimar\n\nUsos: eliminar erros de minteo,\nconteúdo expirado, tokens revocables",
             en: "tfBurnable flag (1) at mint time:\n• Allows the issuer to burn the token\n• Even if they are no longer the owner\n\nWithout tfBurnable:\n• Only the current owner can burn\n\nUse cases: fix minting errors,\nexpired content, revocable tokens",
             jp: "ミント時のtfBurnableフラグ（1）：\n• 発行者がトークンをバーンできる\n• もはや所有者でなくても\n\ntfBurnableなし：\n• 現在の所有者のみバーン可能\n\nユースケース：ミントエラーの修正、\n期限切れコンテンツ、取り消し可能なトークン",
             ko: "민팅 시 tfBurnable 플래그 (1):\n• 발행자가 토큰을 소각할 수 있음\n• 더 이상 소유자가 아니더라도\n\ntfBurnable 없음:\n• 현재 소유자만 소각 가능\n\n사용 사례: 민팅 오류 수정,\n만료된 콘텐츠, 취소 가능한 토큰",
@@ -1153,6 +1317,7 @@ buyURIToken();`,
       id: "m7l3",
       title: {
         es: "Metadatos y estándares para URITokens",
+        pt: "Metadados e estándares para URITokens",
         en: "Metadata and Standards for URITokens",
         jp: "URITokenのメタデータと標準",
         ko: "URIToken의 메타데이터와 표준",
@@ -1211,6 +1376,46 @@ Siguiendo un estándar similar a ERC-721, los metadatos JSON de un URIToken típ
 - **Usa IPFS para producción**: La inmutabilidad y descentralización protegen el valor del NFT
 - **Mantén el JSON consistente**: Sigue el estándar de metadatos para compatibilidad con marketplaces y exploradores
 - **No pongas datos sensibles en la URI**: Todo es público en el ledger`,
+        pt: `Os metadados são a chave para que um NFT sea útil e verificable. Em Xahau, os URITokens usam os campos **URI** e **Digest** para enlazar e verificar o conteúdo asociado.
+### O campo URI: o que colocar nele
+A URI é um link que aponta ao conteúdo ou metadados do NFT. Há várias opções:
+- **IPFS links** (\`ipfs://QmXxx...\`): Armazenamento descentralizado. O conteúdo é imutável e direcionado por hash. É a opção **recomendada** para produção
+- **HTTPS links** (\`https://mi-servidor.com/metadata/1.json\`): Armazenamento centralizado. Fácil de implementar mas depende de que o servidor esteja disponível
+### O campo Digest: verificação de integridade
+O **Digest** é um hash SHA-256 do conteúdo ao qual aponta a URI. Permite a qualquer pessoa verificar que o conteúdo não foi alterado desde que se criou o NFT. É armazenado como uma string hexadecimal de 64 caracteres no ledger.
+### Estándar de metadados JSON
+Siguiendo um estándar similar a ERC-721, os metadados JSON de um URIToken típicamente incluin:
+\`\`\`json
+{
+    "content": {
+        "url": "ipfs://bafybeign6w3zkxxqohchtxyv4qot6zrwcrvosmmrz2c6ayijl67h42s3km/106.png"
+    },
+    "details": {
+        "title": "Nome do seu NFT",
+        "categories": [
+            "0001"
+        ],
+        "publisher": {
+            "name": "Tu nome",
+            "url": "https://www.tuweb.com",
+            "email": "tucorreo@gmail.com"
+        },
+        "group": {
+            "title": "Título da sua coleção"
+        }
+    }
+}
+\`\`\`
+### Opções de armazenamento
+| Opção | Vantagens | Desvantagens |
+|---|---|---|
+| **IPFS** | Descentralizado, imutável, direcionado por hash | Necesita pinning para persistencia |
+| **Servidor centralizado** | Simple, rápido | Punto único de fallo, mutable |
+### Boas práticas
+- **Sempre defina o Digest**: Permite verificar a integridade do conteúdo em qualquer momento
+- **Usa IPFS para produção**: A imutabilidade e descentralização protegem o valor do NFT
+- **Mantén o JSON consistente**: Sigue o estándar de metadados para compatibilidad com marketplaces e exploradores
+- **Não coloque dados sensíveis na URI**: Tudo é público no ledger`,
         en: `Metadata is the key to making an NFT useful and verifiable. On Xahau, URITokens use the **URI** and **Digest** fields to link to and verify associated content.
 
 ### The URI Field: What to Put in It
@@ -1425,9 +1630,10 @@ URI 是指向 NFT 内容或元数据的链接，常见选择包括：
       ],
       slides: [
         {
-          title: { es: "El campo URI: opciones de enlace", en: "The URI Field: Link Options", jp: "URIフィールド：リンクの選択肢", ko: "URI 필드: 링크 옵션", zh: "URI 字段：链接选项" },
+          title: { es: "El campo URI: opciones de enlace", pt: "O campo URI: opções de link", en: "The URI Field: Link Options", jp: "URIフィールド：リンクの選択肢", ko: "URI 필드: 링크 옵션", zh: "URI 字段：链接选项" },
           content: {
             es: "¿A dónde apunta tu NFT?\n\n• ipfs://Qm... → Descentralizado e inmutable\n• https://... → Centralizado pero simple\n",
+            pt: "Para onde aponta seu NFT?\n\n• ipfs://Qm... → Descentralizado e imutável\n• https://... → Centralizado mas simples\n",
             en: "Where does your NFT point to?\n\n• ipfs://Qm... → Decentralized and immutable\n• https://... → Centralized but simple\n",
             jp: "あなたのNFTはどこを指しているか？\n\n• ipfs://Qm... → 分散型かつ不変\n• https://... → 集中型だがシンプル\n",
             ko: "당신의 NFT는 어디를 가리키나요?\n\n• ipfs://Qm... → 분산형이며 불변\n• https://... → 중앙화되었지만 단순\n",
@@ -1436,9 +1642,10 @@ URI 是指向 NFT 内容或元数据的链接，常见选择包括：
           visual: "🔗",
         },
         {
-          title: { es: "Digest: verificación de integridad", en: "Digest: Integrity Verification", jp: "Digest：整合性検証", ko: "Digest: 무결성 검증", zh: "Digest：完整性验证" },
+          title: { es: "Digest: verificación de integridad", pt: "Digest: verificação de integridadee", en: "Digest: Integrity Verification", jp: "Digest：整合性検証", ko: "Digest: 무결성 검증", zh: "Digest：完整性验证" },
           content: {
             es: "SHA-256 del contenido → grabado en el ledger\n\n• Cualquiera puede verificar\n• Detecta alteraciones\n• 64 caracteres hexadecimales\n\nSiempre establece el Digest para proteger tu NFT",
+            pt: "SHA-256 do conteúdo → gravado no ledger\n\n• Qualquer pessoa pode verificar\n• Detecta alterações\n• 64 caracteres hexadecimais\n\nSempre defina o Digest para proteger seu NFT",
             en: "SHA-256 of the content → recorded on the ledger\n\n• Anyone can verify\n• Detects tampering\n• 64 hexadecimal characters\n\nAlways set the Digest to protect your NFT",
             jp: "コンテンツのSHA-256 → レジャーに記録\n\n• 誰でも検証可能\n• 改ざんを検出\n• 64文字の16進数\n\nNFTを守るため常にDigestを設定すること",
             ko: "콘텐츠의 SHA-256 → 레저에 기록\n\n• 누구나 검증 가능\n• 변조 감지\n• 64자의 16진수 문자\n\nNFT를 보호하기 위해 항상 Digest를 설정하세요",
@@ -1447,9 +1654,10 @@ URI 是指向 NFT 内容或元数据的链接，常见选择包括：
           visual: "🔏",
         },
         {
-          title: { es: "Estándar de metadatos JSON", en: "JSON Metadata Standard", jp: "JSONメタデータ標準", ko: "JSON 메타데이터 표준", zh: "JSON 元数据标准" },
+          title: { es: "Estándar de metadatos JSON", pt: "Padrão de metadados JSON", en: "JSON Metadata Standard", jp: "JSONメタデータ標準", ko: "JSON 메타데이터 표준", zh: "JSON 元数据标准" },
           content: {
             es: "Estructura recomendada (similar a ERC-721):\n\n• name → Nombre del NFT\n• description → Descripción\n• image → Enlace a la imagen\n• attributes → Array de propiedades\n\nConsistencia = compatibilidad con exploradores",
+            pt: "Estructura recomendada (similar a ERC-721):\n\n• name → Nome do NFT\n• description → Descripción\n• image → Enlace à imagen\n• attributes → Array de propriedades\n\nConsistencia = compatibilidad com exploradores",
             en: "Recommended structure (similar to ERC-721):\n\n• name → NFT name\n• description → Description\n• image → Link to image\n• attributes → Array of properties\n\nConsistency = compatibility with explorers",
             jp: "推奨構造（ERC-721と類似）：\n\n• name → NFT名\n• description → 説明\n• image → 画像へのリンク\n• attributes → プロパティの配列\n\n一貫性 = エクスプローラーとの互換性",
             ko: "권장 구조 (ERC-721과 유사):\n\n• name → NFT 이름\n• description → 설명\n• image → 이미지 링크\n• attributes → 속성 배열\n\n일관성 = 탐색기와의 호환성",

@@ -1,5 +1,6 @@
 import React from 'react'
 import ProgressBar from './ProgressBar'
+import LanguageSelect from './LanguageSelect'
 
 export default function Header({ lang, setLang, labels, completedCount, totalLessons, theme, onToggleTheme }) {
   const pct = totalLessons === 0 ? 0 : Math.round((completedCount / totalLessons) * 100)
@@ -50,22 +51,7 @@ export default function Header({ lang, setLang, labels, completedCount, totalLes
             >
               {theme === 'dark' ? '☀️' : '🌙'}
             </button>
-            {/* Language Switcher */}
-            <div className="flex rounded-lg overflow-hidden" style={{ border: '1px solid var(--color-border)' }}>
-              {['en', 'es', 'jp', 'ko', 'zh'].map((l) => (
-                <button
-                  key={l}
-                  onClick={() => setLang(l)}
-                  className="px-2.5 py-1.5 text-xs sm:text-sm font-bold uppercase transition-all"
-                  style={{
-                    background: lang === l ? 'var(--color-accent)' : 'transparent',
-                    color: lang === l ? '#000' : 'var(--color-text-dim)',
-                  }}
-                >
-                  {l === 'jp' ? '日本語' : l === 'ko' ? '한국어' : l === 'zh' ? '中文' : l.toUpperCase()}
-                </button>
-              ))}
-            </div>
+            <LanguageSelect lang={lang} setLang={setLang} label={labels.language} />
           </div>
         </div>
         {/* Progress */}

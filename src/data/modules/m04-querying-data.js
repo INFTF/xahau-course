@@ -3,6 +3,7 @@ export default {
   icon: "🔍",
   title: {
     es: "Consulta de datos a un nodo de la red",
+    pt: "Consulta de dados a um nó da rede",
     en: "Querying data from a network node",
     jp: "ネットワークノードへのデータ照会",
     ko: "네트워크 노드에서 데이터 조회하기",
@@ -13,6 +14,7 @@ export default {
       id: "m4l1",
       title: {
         es: "Conexión a nodos Xahau",
+        pt: "Conexão a nós Xahau",
         en: "Connecting to Xahau nodes",
         jp: "Xahauノードへの接続",
         ko: "Xahau 노드에 연결하기",
@@ -47,6 +49,26 @@ La API de Xahau ofrece comandos para consultar:
 - **Ledger index**: Puedes consultar un ledger específico por su número, o usar \`"validated"\` para el último validado
 - **Drops**: Las cantidades de XAH se expresan en drops (1 XAH = 1,000,000 drops)
 - **Marcadores (Markers)**: Para paginar resultados grandes, la API usa marcadores`,
+        pt: `Para ler dados da blockchain Xahau, você precisa se conectar a um **nó da rede** por meio de **WebSocket**. Os nós expõem uma API JSON-RPC que permite consultar toda a informação do ledger.
+### Tipos de nós
+- **Nós públicos**: Mantidos pela comunidade, acessíveis para qualquer pessoa. Ideais para desenvolvimento
+- **Nós próprios**: Você pode executar seu próprio nó para maior controle e confiabilidade
+### Endpoints principais
+| Rede | WebSocket URL |
+|---|---|
+| Mainnet | \`wss://xahau.network\` |
+| Testnet | \`wss://xahau-test.net\` |
+### Tipos de consultas
+A API da Xahau oferece comandos para consultar:
+- **Informação do servidor**: \`server_info\`, \`server_state\`
+- **Contas**: \`account_info\`, \`account_lines\`, \`account_objects\`, \`account_tx\`
+- **Ledger**: \`ledger\`, \`ledger_data\`, \`ledger_entry\`
+- **Transações**: \`tx\`, \`transaction_entry\`
+- **Suscripciones**: \`subscribe\` / \`unsubscribe\` para eventos em tempo real
+### Conceitos importantes
+- **Ledger index**: Você pode consultar um ledger específico por seu número, ou usar \`"validated"\` para o último validado
+- **Drops**: As quantidades de XAH são expressas em drops (1 XAH = 1,000,000 drops)
+- **Marcadores (Markers)**: Para paginar resultados grandes, a API usa marcadores`,
         en: `To read data from the Xahau blockchain, you need to connect to a **network node** via **WebSocket**. Nodes expose a JSON-RPC API that allows you to query all ledger information.
 
 ### Node types
@@ -164,6 +186,7 @@ Xahau API 提供以下命令：
         {
           title: {
             es: "Conectar y consultar información del servidor",
+            pt: "Conectar e consultar informação do servidor",
             en: "Connect and query server information",
             jp: "サーバー情報の接続と照会",
             ko: "서버 정보 연결 및 조회",
@@ -193,6 +216,24 @@ async function getServerInfo() {
   await client.disconnect();
 }
 
+getServerInfo();`,
+            pt: `const { Client } = require("xahau");
+async function getServerInfo() {
+  const client = new Client("wss://xahau-test.net");
+  await client.connect();
+  const response = await client.request({
+    command: "server_info"
+  });
+  const info = response.result.info;
+  console.log("=== Informação do servidor ===");
+  console.log("Versión:", info.build_version);
+  console.log("ID de rede:", info.network_id);
+  console.log("Estado:", info.server_state);
+  console.log("Peers conectados:", info.peers);
+  console.log("Ledger validado:", info.validated_ledger.seq);
+  console.log("Quorum de validação:", info.validation_quorum);
+  await client.disconnect();
+}
 getServerInfo();`,
             en: `const { Client } = require("xahau");
 
@@ -291,6 +332,7 @@ getServerInfo();`,
         {
           title: {
             es: "Consultar información detallada de una cuenta",
+            pt: "Consultar informação detallada de uma conta",
             en: "Query detailed account information",
             jp: "アカウントの詳細情報を照会する",
             ko: "계정 상세 정보 조회",
@@ -329,6 +371,32 @@ async function getAccountInfo(address) {
   await client.disconnect();
 }
 
+getAccountInfo("rYourAddressHere");`,
+            pt: `const { Client } = require("xahau");
+async function getAccountInfo(address) {
+  const client = new Client("wss://xahau-test.net");
+  await client.connect();
+  const response = await client.request({
+    command: "account_info",
+    account: address,
+    ledger_index: "validated",
+  });
+  const data = response.result.account_data;
+  console.log("=== Dados da conta ===");
+  console.log("Endereçou:", data.Account);
+  console.log("Saldo:", Number(data.Saldo) / 1_000_000, "XAH");
+  console.log("Sequência:", data.Sequence);
+  console.log("Objetos do proprietário:", data.OwnerCount);
+  console.log("Flags:", data.Flags);
+  // Verificar se tem Namespaces instalados
+  if (data.HookNamespaces) {
+    console.log("Namespaces instalados: Sí");
+    console.log("Namespaces:", data.HookNamespaces);
+  } else {
+    console.log("Namespaces instalados: Não");
+  }
+  await client.disconnect();
+}
 getAccountInfo("rYourAddressHere");`,
             en: `const { Client } = require("xahau");
 
@@ -463,9 +531,10 @@ getAccountInfo("rYourAddressHere");`,
       ],
       slides: [
         {
-          title: { es: "Conexión a Xahau", en: "Connecting to Xahau", jp: "Xahauへの接続", ko: "Xahau 연결", zh: "连接到 Xahau" },
+          title: { es: "Conexión a Xahau", pt: "Conexão com Xahau", en: "Connecting to Xahau", jp: "Xahauへの接続", ko: "Xahau 연결", zh: "连接到 Xahau" },
           content: {
             es: "Conexión vía WebSocket a nodos públicos\n\n🌐 Mainnet: wss://xahau.network\n🧪 Testnet: wss://xahau-test.net\n\nAPI JSON-RPC para todas las consultas",
+            pt: "Conexão vía WebSocket a nós públicos\n\n🌐 Mainnet: wss://xahau.network\n🧪 Testnet: wss://xahau-test.net\n\nAPI JSON-RPC para todas as consultas",
             en: "WebSocket connection to public nodes\n\n🌐 Mainnet: wss://xahau.network\n🧪 Testnet: wss://xahau-test.net\n\nJSON-RPC API for all queries",
             jp: "パブリックノードへのWebSocket接続\n\n🌐 メインネット：wss://xahau.network\n🧪 テストネット：wss://xahau-test.net\n\nすべての照会にJSON-RPC API",
             ko: "공용 노드에 WebSocket으로 연결\n\n🌐 Mainnet: wss://xahau.network\n🧪 Testnet: wss://xahau-test.net\n\n모든 조회에 사용하는 JSON-RPC API",
@@ -474,9 +543,10 @@ getAccountInfo("rYourAddressHere");`,
           visual: "🔌",
         },
         {
-          title: { es: "Comandos principales", en: "Main commands", jp: "主要なコマンド", ko: "주요 명령", zh: "主要命令" },
+          title: { es: "Comandos principales", pt: "Comandos principais", en: "Main commands", jp: "主要なコマンド", ko: "주요 명령", zh: "主要命令" },
           content: {
             es: "• server_info → Estado del nodo\n• account_info → Datos de cuenta\n• account_lines → TrustLines\n• account_objects → Objetos de la cuenta\n• account_tx → Historial de transacciones\n• ledger → Info del ledger",
+            pt: "• server_info → Estado do nó\n• account_info → Dados de conta\n• account_lines → TrustLines\n• account_objects → Objetos da conta\n• account_tx → Histórico de transações\n• ledger → Informações do ledger",
             en: "• server_info → Node status\n• account_info → Account data\n• account_lines → TrustLines\n• account_objects → Account objects\n• account_tx → Transaction history\n• ledger → Ledger info",
             jp: "• server_info → ノードの状態\n• account_info → アカウントデータ\n• account_lines → TrustLine\n• account_objects → アカウントオブジェクト\n• account_tx → トランザクション履歴\n• ledger → レジャー情報",
             ko: "• server_info → 노드 상태\n• account_info → 계정 데이터\n• account_lines → TrustLine\n• account_objects → 계정 객체\n• account_tx → 트랜잭션 기록\n• ledger → Ledger 정보",
@@ -485,9 +555,10 @@ getAccountInfo("rYourAddressHere");`,
           visual: "📡",
         },
         {
-          title: { es: "Buenas prácticas de conexión", en: "Connection best practices", jp: "接続のベストプラクティス", ko: "연결 모범 사례", zh: "连接最佳实践" },
+          title: { es: "Buenas prácticas de conexión", pt: "Boas práticas de conexão", en: "Connection best practices", jp: "接続のベストプラクティス", ko: "연결 모범 사례", zh: "连接最佳实践" },
           content: {
             es: "• Envuelve conexiones en try/catch\n• Implementa reconexión automática\n• Escucha el evento 'disconnected'\n• Testnet para desarrollo, Mainnet para producción\n• Configura timeouts razonables\n• Valida respuestas antes de procesar",
+            pt: "• Envolva conexões em try/catch\n• Implementa reconexão automática\n• Escute o evento 'disconnected'\n• Testnet para desenvolvimento, Mainnet para produção\n• Configura timeouts razoáveis\n• Valida respostas antes de processar",
             en: "• Wrap connections in try/catch\n• Implement automatic reconnection\n• Listen for the 'disconnected' event\n• Testnet for development, Mainnet for production\n• Configure reasonable timeouts\n• Validate responses before processing",
             jp: "• try/catchで接続をラップする\n• 自動再接続を実装する\n• 'disconnected'イベントをリッスンする\n• 開発にはTestnet、本番にはMainnet\n• 適切なタイムアウトを設定する\n• 処理前にレスポンスを検証する",
             ko: "• 연결 로직을 try/catch로 감싸기\n• 자동 재연결 구현\n• 'disconnected' 이벤트 감지\n• 개발은 Testnet, 운영은 Mainnet 사용\n• 적절한 timeout 설정\n• 처리 전에 응답 검증",
@@ -501,6 +572,7 @@ getAccountInfo("rYourAddressHere");`,
       id: "m4l2",
       title: {
         es: "Consultas avanzadas y suscripciones",
+        pt: "Consultas avançadas e assinaturas",
         en: "Advanced queries and subscriptions",
         jp: "高度な照会とサブスクリプション",
         ko: "고급 조회와 구독",
@@ -532,6 +604,23 @@ Con el comando \`subscribe\` puedes recibir notificaciones cuando ocurren evento
 ### Consulta de transacciones individuales
 
 Puedes consultar los detalles de una transacción específica usando su **hash** con el comando \`tx\`.`,
+        pt: `Além das consultas básicas, Xahau permite consultar objetos específicos do ledger, o histórico de transações de uma conta e assinar eventos em tempo real.
+### Histórico de transações
+O comando \`account_tx\` retorna as transações associadas a uma conta. Você pode paginar os resultados usando o campo \`marker\`.
+### Objetos de uma conta
+O comando \`account_objects\` retorna todos os objetos do ledger associados a uma conta:
+- TrustLines (linhas de confiança)
+- Offers (ordens no DEX)
+- URITokens (NFTs)
+- Hooks instalados
+- Estados de Hooks
+### Assinaturas em tempo real
+Com o comando \`subscribe\` você pode receber notificações quando eventos ocorrem:
+- **ledger**: Notificação sempre que um novo ledger é fechado
+- **transactions**: Todas as transações da rede
+- **accounts**: Transações que afetam contas específicas
+### Consulta de transações individuais
+Você pode consultar os detalhes de uma transação específica usando seu **hash** com o comando \`tx\`.`,
         en: `Beyond basic queries, Xahau allows you to query specific ledger objects, an account's transaction history, and subscribe to real-time events.
 
 ### Transaction history
@@ -637,6 +726,7 @@ You can query the details of a specific transaction using its **hash** with the 
         {
           title: {
             es: "Consultar historial de transacciones de una cuenta",
+            pt: "Consultar histórico de transações de uma conta",
             en: "Query an account's transaction history",
             jp: "アカウントのトランザクション履歴を照会する",
             ko: "계정 트랜잭션 기록 조회",
@@ -676,6 +766,34 @@ async function getAccountTransactions(address) {
   await client.disconnect();
 }
 //Ejemplo de dirección: rDADDYfnLvVY9FBnS8zFXhwYFHPuU5q2Sk
+getAccountTransactions("rYourAddressHere");`,
+            pt: `const { Client } = require("xahau");
+async function getAccountTransactions(address) {
+  const client = new Client("wss://xahau-test.net");
+  await client.connect();
+  const response = await client.request({
+    command: "account_tx",
+    account: address,
+    ledger_index_min: -1,
+    ledger_index_max: -1,
+    limit: 10,
+  });
+  console.log("=== Últimas transações ===");
+  for (const item of response.result.transactions) {
+    const tx = item.tx;
+    console.log(\`Tipo: \${tx.TransactionType}\`);
+    console.log(\`  Hash: \${item.tx.hash}\`);
+    console.log(\`  Fecha: \${new Date((tx.date + 946684800) * 1000).toISOString()}\`);
+    console.log(\`  Resultado: \${item.meta.TransactionResult}\`);
+    if (tx.TransactionType === "Payment") {
+      console.log(\`  De: \${tx.Account}\`);
+      console.log(\`  A: \${tx.Destination}\`);
+      console.log(\`  Quantidade: \${Number(tx.Amount) / 1_000_000} XAH\`);
+    }
+  }
+  await client.disconnect();
+}
+//Exemplo de endereçou: rDADDYfnLvVY9FBnS8zFXhwYFHPuU5q2Sk
 getAccountTransactions("rYourAddressHere");`,
             en: `const { Client } = require("xahau");
 
@@ -814,6 +932,7 @@ getAccountTransactions("rYourAddressHere");`,
         {
           title: {
             es: "Consultar objetos de una cuenta y suscribirse a eventos",
+            pt: "Consultar objetos de uma conta e assinar eventos",
             en: "Query account objects and subscribe to events",
             jp: "アカウントオブジェクトの照会とイベントのサブスクリプション",
             ko: "계정 객체 조회와 이벤트 구독",
@@ -863,6 +982,42 @@ async function getAccountObjects(address) {
   setTimeout(() => client.disconnect(), 60000);
 }
 //Ejemplo de dirección: rDADDYfnLvVY9FBnS8zFXhwYFHPuU5q2Sk
+getAccountObjects("rYourAddressHere");`,
+            pt: `const { Client } = require("xahau");
+async function getAccountObjects(address) {
+  const client = new Client("wss://xahau-test.net");
+  await client.connect();
+  // Consultar todos os objetos da conta
+  const response = await client.request({
+    command: "account_objects",
+    account: address,
+    ledger_index: "validated",
+  });
+  console.log("=== Objetos da conta ===");
+  for (const obj of response.result.account_objects) {
+    console.log(\`Tipo: \${obj.LedgerEntryType}\`);
+    if (obj.LedgerEntryType === "RippleState") {
+      console.log(\`  Token: \${obj.Saldo.currency}\`);
+      console.log(\`  Saldo: \${obj.Saldo.value}\`);
+    } else if (obj.LedgerEntryType === "URIToken") {
+      console.log(\`  URI: \${obj.URI}\`);
+    }
+  }
+  // Suscribirse a as transações de esta conta
+  console.log("Suscrito a as transações da conta...");
+  await client.request({
+    command: "subscribe",
+    accounts: [address]
+  });
+  client.on("transaction", (tx) => {
+    console.log("¡Nova transação detectada!");
+    console.log("Tipo:", tx.transaction.TransactionType);
+    console.log("Resultado:", tx.meta.TransactionResult);
+  });
+  // Mantener conexão abierta 60 segundos
+  setTimeout(() => client.disconnect(), 60000);
+}
+//Exemplo de endereçou: rDADDYfnLvVY9FBnS8zFXhwYFHPuU5q2Sk
 getAccountObjects("rYourAddressHere");`,
             en: `const { Client } = require("xahau");
 
@@ -1041,9 +1196,10 @@ getAccountObjects("rYourAddressHere");`,
       ],
       slides: [
         {
-          title: { es: "Historial de transacciones", en: "Transaction history", jp: "トランザクション履歴", ko: "트랜잭션 기록", zh: "交易历史" },
+          title: { es: "Historial de transacciones", pt: "Histórico de transações", en: "Transaction history", jp: "トランザクション履歴", ko: "트랜잭션 기록", zh: "交易历史" },
           content: {
             es: "account_tx → Historial de una cuenta\n\n• Paginar con marker\n• Filtrar por tipo de transacción\n• Ver resultados (éxito/fallo)\n• Consultar metadatos detallados",
+            pt: "account_tx → Histórico de uma conta\n\n• Paginar com marker\n• Filtrar por tipo de transação\n• Ver resultados (sucesso/falha)\n• Consultar metadados detalhados",
             en: "account_tx → Account history\n\n• Paginate with marker\n• Filter by transaction type\n• View results (success/failure)\n• Query detailed metadata",
             jp: "account_tx → アカウントの履歴\n\n• markerでページング\n• トランザクションタイプでフィルタリング\n• 結果を確認（成功/失敗）\n• 詳細なメタデータを照会",
             ko: "account_tx → 계정 기록\n\n• marker로 페이지네이션\n• 트랜잭션 유형별 필터링\n• 결과 확인(성공/실패)\n• 상세 메타데이터 조회",
@@ -1052,9 +1208,10 @@ getAccountObjects("rYourAddressHere");`,
           visual: "📜",
         },
         {
-          title: { es: "Tiempo real", en: "Real time", jp: "リアルタイム", ko: "실시간", zh: "实时" },
+          title: { es: "Tiempo real", pt: "Tempo real", en: "Real time", jp: "リアルタイム", ko: "실시간", zh: "实时" },
           content: {
             es: "subscribe → Eventos en tiempo real\n\n• ledger → Cierre de ledgers\n• transactions → Todas las txs\n• accounts → Txs de cuentas específicas\n\nIdeal para monitorizar actividad",
+            pt: "subscribe → Eventos em tempo real\n\n• ledger → Fechamento de ledgers\n• transactions → Todas as txs\n• accounts → Txs de contas específicas\n\nIdeal para monitorar atividade",
             en: "subscribe → Real-time events\n\n• ledger → Ledger closings\n• transactions → All txs\n• accounts → Txs for specific accounts\n\nIdeal for monitoring activity",
             jp: "subscribe → リアルタイムイベント\n\n• ledger → レジャーのクローズ\n• transactions → すべてのtx\n• accounts → 特定アカウントのtx\n\nアクティビティの監視に最適",
             ko: "subscribe → 실시간 이벤트\n\n• ledger → ledger 닫힘 알림\n• transactions → 모든 tx\n• accounts → 특정 계정 tx\n\n활동 모니터링에 적합",
@@ -1063,9 +1220,10 @@ getAccountObjects("rYourAddressHere");`,
           visual: "⚡",
         },
         {
-          title: { es: "Suscripciones en detalle", en: "Subscriptions in detail", jp: "サブスクリプションの詳細", ko: "구독 상세", zh: "订阅详解" },
+          title: { es: "Suscripciones en detalle", pt: "Assinaturas em detalhe", en: "Subscriptions in detail", jp: "サブスクリプションの詳細", ko: "구독 상세", zh: "订阅详解" },
           content: {
             es: "Comando subscribe para eventos en tiempo real:\n\n• Evento ledger → Nuevo ledger cerrado\n• Evento transaction → Tx confirmada\n• Escucha con client.on('transaction')\n• unsubscribe para dejar de escuchar\n• Mantén la conexión WebSocket abierta",
+            pt: "Comando subscribe para eventos em tempo real:\n\n• Evento ledger → Novo ledger cerrado\n• Evento transaction → Tx conassinaturada\n• Escute com client.on('transaction')\n• unsubscribe para dejar de escuchar\n• Mantén a conexão WebSocket abierta",
             en: "subscribe command for real-time events:\n\n• ledger event → New ledger closed\n• transaction event → Tx confirmed\n• Listen with client.on('transaction')\n• unsubscribe to stop listening\n• Keep the WebSocket connection open",
             jp: "リアルタイムイベントのsubscribeコマンド：\n\n• ledgerイベント → 新しいレジャーがクローズ\n• transactionイベント → txが確認済み\n• client.on('transaction')でリッスン\n• unsubscribeでリッスン停止\n• WebSocket接続を開いたままにする",
             ko: "실시간 이벤트용 subscribe 명령:\n\n• ledger 이벤트 → 새 ledger 닫힘\n• transaction 이벤트 → tx 확인\n• client.on('transaction')로 수신\n• unsubscribe로 중지\n• WebSocket 연결을 계속 유지",
@@ -1079,6 +1237,7 @@ getAccountObjects("rYourAddressHere");`,
       id: "m4l3",
       title: {
         es: "Paginación y manejo de errores",
+        pt: "Paginação e tratamento de erros",
         en: "Pagination and error handling",
         jp: "ページネーションとエラー処理",
         ko: "페이지네이션과 오류 처리",
@@ -1115,6 +1274,29 @@ Muchos comandos de la API devuelven resultados paginados. Cuando hay más datos 
 - **Maneja desconexiones**: Escucha el evento \`disconnected\` del cliente y reconecta automáticamente
 - **Rate limiting**: Los nodos públicos pueden limitar las peticiones. Añade pausas entre peticiones masivas
 - **Timeouts**: Configura un timeout razonable para evitar que tu aplicación se quede colgada`,
+        pt: `Quando você trabalha com a API de Xahau, é fundamental dominar dois aspectos: a **paginação** de resultados grandes e o **tratamento de erros** para construir aplicações robustas.
+### O sistema de marcadores (marker)
+Muitos comandos da API retornam resultados paginados. Quando há mais dados do que cabem em uma única resposta, a API inclui um campo \`marker\` no resultado. Para obter a página seguinte, você deve enviar o mesmo comando incluindo esse \`marker\`.
+- O campo \`limit\` controla quantos resultados por página (máximo varia conforme o comando, geralmente 200-400)
+- Se a resposta inclui \`marker\`, há mais páginas disponíveis
+- Se no há \`marker\` na resposta, has chegou ao final
+- O valor do \`marker\` é opaco: não o modifique, simplesmente passe-o como está
+### Erros comuns da API
+| Erro | Significado |
+|---|---|
+| \`actNotFound\` | A conta consultada não existe no ledger |
+| \`lgrNotFound\` | O ledger solicitado não foi encontrado |
+| \`invalidParams\` | Parâmetros incorretos na requisição |
+| \`noCurrent\` | O servidor não tem um ledger atual disponível |
+| \`noNetwork\` | O servidor não está conectado à rede |
+| \`tooBusy\` | O servidor está sobrecarregado |
+### Boas práticas
+- **Sempre envolva as requisições em try/catch**: Os erros de rede, timeouts e erros de API devem ser tratados sempre
+- **Implemente novas tentativas**: Para erros transitórios como \`tooBusy\` ou timeouts, tente novamente com backoff exponencial
+- **Valide as respostas**: Verifique se \`result.status === "success"\` antes de processar dados
+- **Trate desconexões**: Escute o evento \`disconnected\` do cliente e reconecte automaticamente
+- **Rate limiting**: Os nós públicos podem limitar as requisições. Adicione pausas entre requisições massivas
+- **Timeouts**: Configure um timeout razoável para evitar que sua aplicação fique travada`,
         en: `When working with the Xahau API, it is essential to master two aspects: **pagination** of large result sets and **error handling** to build robust applications.
 
 ### The marker system
@@ -1240,6 +1422,7 @@ Many API commands return paginated results. When there is more data than fits in
         {
           title: {
             es: "Paginar todos los objetos de una cuenta usando marker",
+            pt: "Paginar todos os objetos de uma conta usando marker",
             en: "Paginate all account objects using marker",
             jp: "markerを使用してアカウントのすべてのオブジェクトをページングする",
             ko: "marker로 계정 객체 전체 페이지네이션",
@@ -1305,6 +1488,52 @@ async function getAllAccountObjects(address) {
   await client.disconnect();
 }
 //Ejemplo de cuenta: rHh1YJN4kwRdw4Y29Xu1EY9qW8u36vAYLc
+getAllAccountObjects("rYourAddressHere");`,
+            pt: `const { Client } = require("xahau");
+async function getAllAccountObjects(address) {
+  const client = new Client("wss://xahau-test.net");
+  await client.connect();
+  let allObjects = [];
+  let marker = undefined;
+  let page = 1;
+  console.log("=== Obtendo todos os objetos de", address, "===");
+  do {
+    const request = {
+      command: "account_objects",
+      account: address,
+      ledger_index: "validated",
+      limit: 100,
+    };
+    // Incluir marker apenas se existe (não na primeiroa requisição)
+    if (marker) {
+      request.marker = marker;
+    }
+    const response = await client.request(request);
+    const objects = response.result.account_objects;
+    allObjects = allObjects.concat(objects);
+    console.log(\`Página \${page}: \${objects.length} objetos recibidos\`);
+    // Actualizar marker parà próximo página
+    marker = response.result.marker;
+    page++;
+    // Pequeña pausa para não saturar ou nó
+    if (marker) {
+      await new Promise((resolve) => setTimeout(resolve, 200));
+    }
+  } while (marker);
+  console.log(\`nTotal de objetos obtenidos: \${allObjects.length}\`);
+  // Agrupar por tipo
+  const byType = {};
+  for (const obj of allObjects) {
+    const type = obj.LedgerEntryType;
+    byType[type] = (byType[type] || 0) + 1;
+  }
+  console.log("Resumo por tipo:");
+  for (const [type, count] of Object.entries(byType)) {
+    console.log(\`  \${type}: \${count}\`);
+  }
+  await client.disconnect();
+}
+//Exemplo de conta: rHh1YJN4kwRdw4Y29Xu1EY9qW8u36vAYLc
 getAllAccountObjects("rYourAddressHere");`,
             en: `const { Client } = require("xahau");
 
@@ -1547,9 +1776,10 @@ getAllAccountObjects("rYourAddressHere");`,
       ],
       slides: [
         {
-          title: { es: "Paginación con marker", en: "Pagination with marker", jp: "markerによるページネーション", ko: "marker 페이지네이션", zh: "使用 marker 分页" },
+          title: { es: "Paginación con marker", pt: "Paginação com marker", en: "Pagination with marker", jp: "markerによるページネーション", ko: "marker 페이지네이션", zh: "使用 marker 分页" },
           content: {
             es: "Cuando hay muchos resultados, la API pagina:\n\n1. Envía tu consulta con limit\n2. Si la respuesta tiene marker, hay más datos\n3. Reenvía la consulta incluyendo el marker\n4. Repite hasta que no haya marker\n\nNunca modifiques el valor del marker",
+            pt: "Quando há muitos resultados, a API pagina:\n\n1. Envie sua consulta com limit\n2. Se a resposta tem marker, há mais dados\n3. Reenvia a consulta incluindo o marker\n4. Repita até que não haja marker\n\nNunca modifique o valor do marker",
             en: "When there are many results, the API paginates:\n\n1. Send your query with limit\n2. If the response has a marker, there is more data\n3. Resend the query including the marker\n4. Repeat until there is no marker\n\nNever modify the marker value",
             jp: "多くの結果がある場合、APIはページングします：\n\n1. limitをつけてクエリを送信\n2. レスポンスにmarkerがあればデータが続く\n3. markerを含めてクエリを再送信\n4. markerがなくなるまで繰り返す\n\nmarkerの値を絶対に変更しない",
             ko: "결과가 많으면 API가 페이지를 나눕니다:\n\n1. limit와 함께 요청 전송\n2. 응답에 marker가 있으면 다음 데이터 존재\n3. marker를 포함해 다시 요청\n4. marker가 없어질 때까지 반복\n\nmarker 값은 절대 수정하지 마세요",
@@ -1558,9 +1788,10 @@ getAllAccountObjects("rYourAddressHere");`,
           visual: "📄",
         },
         {
-          title: { es: "Errores comunes", en: "Common errors", jp: "よくあるエラー", ko: "흔한 오류", zh: "常见错误" },
+          title: { es: "Errores comunes", pt: "Erros comuns", en: "Common errors", jp: "よくあるエラー", ko: "흔한 오류", zh: "常见错误" },
           content: {
             es: "• actNotFound → Cuenta no existe\n• lgrNotFound → Ledger no encontrado\n• invalidParams → Parámetros incorrectos\n• noCurrent → Sin ledger actual\n• noNetwork → Sin conexión a la red\n• tooBusy → Servidor sobrecargado",
+            pt: "• actNotFound → Conta não existe\n• lgrNotFound → Ledger não encontrado\n• invalidParams → Parâmetros incorretos\n• noCurrent → Sem ledger atual\n• noNetwork → Sem conexão à rede\n• tooBusy → Servidor sobrecargado",
             en: "• actNotFound → Account does not exist\n• lgrNotFound → Ledger not found\n• invalidParams → Incorrect parameters\n• noCurrent → No current ledger\n• noNetwork → No network connection\n• tooBusy → Server overloaded",
             jp: "• actNotFound → アカウントが存在しない\n• lgrNotFound → レジャーが見つからない\n• invalidParams → パラメータが正しくない\n• noCurrent → 現在のレジャーなし\n• noNetwork → ネットワーク接続なし\n• tooBusy → サーバーが過負荷",
             ko: "• actNotFound → 계정이 존재하지 않음\n• lgrNotFound → ledger를 찾지 못함\n• invalidParams → 잘못된 파라미터\n• noCurrent → 현재 ledger 없음\n• noNetwork → 네트워크 연결 없음\n• tooBusy → 서버 과부하",
@@ -1569,9 +1800,10 @@ getAllAccountObjects("rYourAddressHere");`,
           visual: "⚠️",
         },
         {
-          title: { es: "Buenas prácticas", en: "Best practices", jp: "ベストプラクティス", ko: "모범 사례", zh: "最佳实践" },
+          title: { es: "Buenas prácticas", pt: "Boas práticas", en: "Best practices", jp: "ベストプラクティス", ko: "모범 사례", zh: "最佳实践" },
           content: {
             es: "• Siempre usar try/catch en las peticiones\n• Reintentar con backoff exponencial\n• Validar result.status === 'success'\n• Escuchar evento 'disconnected'\n• Pausar entre peticiones masivas\n• Configurar timeouts razonables",
+            pt: "• Sempre usar try/catch nas requisições\n• Tentar novamente com backoff exponencial\n• Validar result.status === 'success'\n• Escutar evento 'disconnected'\n• Pausar entre requisições massivas\n• Configurar timeouts razoáveis",
             en: "• Always use try/catch for requests\n• Retry with exponential backoff\n• Validate result.status === 'success'\n• Listen for the 'disconnected' event\n• Pause between bulk requests\n• Configure reasonable timeouts",
             jp: "• リクエストには常にtry/catchを使用\n• 指数バックオフでリトライする\n• result.status === 'success'を検証する\n• 'disconnected'イベントをリッスンする\n• 大量リクエスト間に間隔を設ける\n• 適切なタイムアウトを設定する",
             ko: "• 요청은 항상 try/catch 사용\n• 지수 백오프로 재시도\n• result.status === 'success' 검증\n• 'disconnected' 이벤트 감지\n• 대량 요청 사이에 잠시 대기\n• 적절한 timeout 설정",
@@ -1585,6 +1817,7 @@ getAllAccountObjects("rYourAddressHere");`,
       id: "m4l4",
       title: {
         es: "Trabajando con objetos del ledger",
+        pt: "Trabalhando com objetos do ledger",
         en: "Working with ledger objects",
         jp: "レジャーオブジェクトの操作",
         ko: "레저 객체 다루기",
@@ -1623,6 +1856,29 @@ Cada objeto en el ledger tiene un **índice único** calculado como un hash SHA-
 - El índice de un RippleState se calcula a partir de las dos cuentas y la moneda
 
 Estos índices son determinísticos: siempre puedes recalcularlos si conoces los datos de entrada.`,
+        pt: `O ledger da Xahau armazena toda a informação em forma de **objetos** (ledger entries). Cada objeto tem um tipo, um índice único (hash) e campos específicos. Nesta lição aprenderemos a consultar e trabalhar com esses objetos diretamente.
+### O comando ledger_entry
+Com \`ledger_entry\` você pode consultar um objeto específico do ledger usando seu **índice** (hash de 64 caracteres hex). Isso é útil quando você já conhece o identificador exato do objeto que você precisa.
+### Tipos de objetos consultáveis
+| Tipo | Descrição |
+|---|---|
+| \`AccountRoot\` | Dados principais de uma conta |
+| \`RippleState\` | Linha de confiança entre duas contas |
+| \`Offer\` | Ordem ativa no DEX |
+| \`URIToken\` | Token não fungível (NFT de Xahau) |
+| \`Hook\` | Definição de um Hook instalado |
+| \`HookState\` | Estado armazenado por um Hook |
+### O comando account_objects com filtro de tipo
+O comando \`account_objects\` aceita o parâmetro \`type\` para filtrar apenas os objetos de um tipo específico. Os valores válidos incluem:
+- \`"state"\` → RippleState (trust lines)
+- \`"offer"\` → Offers (ordens do DEX)
+- \`"uri_token"\` → URITokens
+- \`"hook"\` → Hooks instalados
+### Entendendo os índices do ledger
+Cada objeto no ledger tem um **índice único** calculado como um hash SHA-512Half dos seus dados identificadores. Por exemplo:
+- O índice de um AccountRoot é calculado a partir do endereço da conta
+- O índice de um RippleState é calculado a partir das duas contas e a moeda
+Esses índices são determinísticos: você sempre pode recalculá-los se conhecer os dados de entrada.`,
         en: `The Xahau ledger stores all information as **objects** (ledger entries). Each object has a type, a unique index (hash), and specific fields. In this lesson we will learn how to query and work with these objects directly.
 
 ### The ledger_entry command
@@ -1757,6 +2013,7 @@ ledger의 각 객체는 식별 데이터에서 계산되는 SHA-512Half hash 기
         {
           title: {
             es: "Consultar account_objects filtrados por tipo",
+            pt: "Consultar account_objects filtrados por tipo",
             en: "Query account_objects filtered by type",
             jp: "タイプでフィルタリングされたaccount_objectsを照会する",
             ko: "type으로 필터링한 account_objects 조회",
@@ -1833,6 +2090,64 @@ getObjectsByType("rDk1xiArDMjDqnrR2yWypwQAKg4mKnQYvs", "state");
 // Ver órdenes DEX
 // getObjectsByType("rfmPQz4eSmisCVnWJkKj82hHKQdrUPv3Px", "offer");
 
+// Ver URITokens
+// getObjectsByType("rfPMnDQEzb5StPXj3Dkd34oKY4BVAJCwsn", "uri_token");`,
+            pt: `const { Client } = require("xahau");
+async function getObjectsByType(address, type) {
+  const client = new Client("wss://xahau.network");
+  await client.connect();
+  let allObjects = [];
+  let marker = undefined;
+  do {
+    const request = {
+      command: "account_objects",
+      account: address,
+      type: type,
+      ledger_index: "validated",
+      limit: 100,
+    };
+    if (marker) request.marker = marker;
+    const response = await client.request(request);
+    allObjects = allObjects.concat(response.result.account_objects);
+    marker = response.result.marker;
+  } while (marker);
+  console.log(\`=== \${type.toUpperCase()} para \${address} ===\`);
+  console.log(\`Total encontrados: \${allObjects.length}\`);
+  for (const obj of allObjects) {
+    switch (type) {
+      case "state": // RippleState (trust lines)
+        const currency = obj.Saldo.currency;
+        const balance = obj.Saldo.value;
+        const peer = obj.HighLimit.issuer === address
+          ? obj.LowLimit.issuer
+          : obj.HighLimit.issuer;
+        console.log(\`  \${currency}: balance \${balance} (peer: \${peer})\`);
+        break;
+      case "offer":
+        const pays = typeof obj.TakerPays === "string"
+          ? \`\${Number(obj.TakerPays) / 1_000_000} XAH\`
+          : \`\${obj.TakerPays.value} \${obj.TakerPays.currency}\`;
+        const gets = typeof obj.TakerGets === "string"
+          ? \`\${Number(obj.TakerGets) / 1_000_000} XAH\`
+          : \`\${obj.TakerGets.value} \${obj.TakerGets.currency}\`;
+        console.log(\`  Offer: paga \${pays} → recibe \${gets}\`);
+        break;
+      case "uri_token":
+        const uri = Buffer.from(obj.URI || "", "hex").toString("utf8");
+        console.log(\`  URIToken: \${uri}\`);
+        console.log(\`    Index: \${obj.index}\`);
+        break;
+      default:
+        console.log(\`  \${obj.LedgerEntryType}: \${obj.index}\`);
+    }
+  }
+  await client.disconnect();
+}
+// Exemplos de uso:
+// Ver trust lines
+getObjectsByType("rDk1xiArDMjDqnrR2yWypwQAKg4mKnQYvs", "state");
+// Ver ordens DEX
+// getObjectsByType("rfmPQz4eSmisCVnWJkKj82hHKQdrUPv3Px", "offer");
 // Ver URITokens
 // getObjectsByType("rfPMnDQEzb5StPXj3Dkd34oKY4BVAJCwsn", "uri_token");`,
             en: `const { Client } = require("xahau");
@@ -2124,9 +2439,10 @@ getObjectsByType("rDk1xiArDMjDqnrR2yWypwQAKg4mKnQYvs", "state");
       ],
       slides: [
         {
-          title: { es: "Objetos del ledger", en: "Ledger objects", jp: "レジャーオブジェクト", ko: "레저 객체", zh: "账本对象" },
+          title: { es: "Objetos del ledger", pt: "Objetos do ledger", en: "Ledger objects", jp: "レジャーオブジェクト", ko: "레저 객체", zh: "账本对象" },
           content: {
             es: "Todo en Xahau se almacena como objetos:\n\n• AccountRoot → Datos de cuenta\n• RippleState → Trust lines\n• Offer → Órdenes DEX\n• URIToken → NFTs\n• Hook → Hooks instalados\n\nCada objeto tiene un índice único (hash)",
+            pt: "Tudo na Xahau é armazenado como objetos:\n\n• AccountRoot → Dados de conta\n• RippleState → Trust lines\n• Offer → Ordens DEX\n• URIToken → NFTs\n• Hook → Hooks instalados\n\nCada objeto tem um índice único (hash)",
             en: "Everything in Xahau is stored as objects:\n\n• AccountRoot → Account data\n• RippleState → Trust lines\n• Offer → DEX orders\n• URIToken → NFTs\n• Hook → Installed Hooks\n\nEach object has a unique index (hash)",
             jp: "Xahauのすべてはオブジェクトとして保存される：\n\n• AccountRoot → アカウントデータ\n• RippleState → トラストライン\n• Offer → DEXの注文\n• URIToken → NFT\n• Hook → インストールされたHook\n\n各オブジェクトは一意のインデックス（ハッシュ）を持つ",
             ko: "Xahau의 모든 것은 객체로 저장됩니다:\n\n• AccountRoot → 계정 데이터\n• RippleState → Trust line\n• Offer → DEX 주문\n• URIToken → NFT\n• Hook → 설치된 Hook\n\n각 객체는 고유 인덱스(hash)를 가집니다",
@@ -2135,9 +2451,10 @@ getObjectsByType("rDk1xiArDMjDqnrR2yWypwQAKg4mKnQYvs", "state");
           visual: "🗂️",
         },
         {
-          title: { es: "Consultas por tipo", en: "Queries by type", jp: "タイプ別照会", ko: "유형별 조회", zh: "按类型查询" },
+          title: { es: "Consultas por tipo", pt: "Consultas por tipo", en: "Queries by type", jp: "タイプ別照会", ko: "유형별 조회", zh: "按类型查询" },
           content: {
             es: "account_objects + type = filtro eficiente\n\n• type: 'state' → Trust lines\n• type: 'offer' → Órdenes DEX\n• type: 'uri_token' → NFTs\n• type: 'hook' → Hooks\n\nCombina con marker para paginar",
+            pt: "account_objects + type = filtro eficiente\n\n• type: 'state' → Trust lines\n• type: 'offer' → Ordens DEX\n• type: 'uri_token' → NFTs\n• type: 'hook' → Hooks\n\nCombina com marker para paginar",
             en: "account_objects + type = efficient filtering\n\n• type: 'state' → Trust lines\n• type: 'offer' → DEX orders\n• type: 'uri_token' → NFTs\n• type: 'hook' → Hooks\n\nCombine with marker to paginate",
             jp: "account_objects + type = 効率的なフィルタリング\n\n• type: 'state' → トラストライン\n• type: 'offer' → DEXの注文\n• type: 'uri_token' → NFT\n• type: 'hook' → Hook\n\nmarkerと組み合わせてページングする",
             ko: "account_objects + type = 효율적인 필터링\n\n• type: 'state' → Trust line\n• type: 'offer' → DEX 주문\n• type: 'uri_token' → NFT\n• type: 'hook' → Hook\n\nmarker와 함께 사용해 페이지네이션",

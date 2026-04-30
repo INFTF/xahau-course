@@ -4,19 +4,15 @@ function renderInline(text) {
   const parts = text.split(/(\*\*[^*]+\*\*|`[^`]+`|\[[^\]]+\]\([^)]+\))/g)
   return parts.map((part, i) => {
     if (part.startsWith('**') && part.endsWith('**')) {
-      return <strong key={i} className="font-bold" style={{ color: 'var(--color-text-heading)' }}>{part.slice(2, -2)}</strong>
+      return <strong key={i}>{part.slice(2, -2)}</strong>
     }
     if (part.startsWith('`') && part.endsWith('`')) {
-      return (
-        <code key={i} className="px-1.5 py-0.5 rounded text-sm font-mono" style={{ background: 'var(--color-inline-code-bg)', color: 'var(--color-accent)' }}>
-          {part.slice(1, -1)}
-        </code>
-      )
+      return <code key={i}>{part.slice(1, -1)}</code>
     }
     const linkMatch = part.match(/\[([^\]]+)\]\(([^)]+)\)/)
     if (linkMatch) {
       return (
-        <a key={i} href={linkMatch[2]} target="_blank" rel="noopener noreferrer" className="underline text-blue-400">
+        <a key={i} href={linkMatch[2]} target="_blank" rel="noopener noreferrer">
           {linkMatch[1]}
         </a>
       )
@@ -34,64 +30,69 @@ export default function Markdown({ text }) {
   while (i < lines.length) {
     const line = lines[i]
 
-    // Fenced code blocks (``` ... ```)
+    // Fenced code block
     if (line.trimStart().startsWith('```')) {
       const codeLines = []
-      i++ // skip opening ```
+      i++
       while (i < lines.length && !lines[i].trimStart().startsWith('```')) {
         codeLines.push(lines[i])
         i++
       }
-      i++ // skip closing ```
+      i++
       elements.push(
         <pre
-          key={`code-${i}`}
-          className="rounded-xl p-4 my-3 overflow-x-auto text-sm leading-relaxed font-mono"
+          key={`pre-${i}`}
           style={{
             background: 'var(--color-code-bg)',
             border: '1px solid var(--color-border)',
+            borderRadius: '10px',
+            padding: '14px 16px',
+            margin: '1rem 0',
+            overflowX: 'auto',
+            fontSize: '13.5px',
+            lineHeight: '1.65',
             color: 'var(--color-code-text)',
           }}
         >
-          <code>{codeLines.join('\n')}</code>
+          <code style={{ fontFamily: "'Fira Code', 'JetBrains Mono', Consolas, monospace" }}>
+            {codeLines.join('\n')}
+          </code>
         </pre>
       )
       continue
     }
 
-    // Table rows (|...|...|)
+    // Table
     if (line.trimStart().startsWith('|')) {
       const tableLines = []
       while (i < lines.length && lines[i].trimStart().startsWith('|')) {
         tableLines.push(lines[i])
         i++
       }
-      // Parse table
       const rows = tableLines
-        .filter((row) => !/^\|\s*-+/.test(row)) // skip separator rows like |---|---|
-        .map((row) =>
-          row
-            .split('|')
-            .slice(1, -1) // remove empty first/last from split
-            .map((cell) => cell.trim())
-        )
+        .filter(row => !/^\|\s*-+/.test(row))
+        .map(row => row.split('|').slice(1, -1).map(cell => cell.trim()))
 
       if (rows.length > 0) {
-        const headerRow = rows[0]
-        const bodyRows = rows.slice(1)
+        const [headerRow, ...bodyRows] = rows
         elements.push(
-          <div key={`table-${i}`} className="overflow-x-auto my-3">
-            <table className="w-full text-sm border-collapse" style={{ borderColor: 'var(--color-border)' }}>
+          <div key={`tbl-${i}`} className="overflow-x-auto my-4">
+            <table style={{ width: '100%', fontSize: '14px', borderCollapse: 'collapse' }}>
               <thead>
                 <tr>
                   {headerRow.map((cell, ci) => (
                     <th
                       key={ci}
-                      className="text-left px-3 py-2 font-bold text-xs uppercase tracking-wider"
                       style={{
-                        background: 'var(--color-code-header)',
+                        textAlign: 'left',
+                        padding: '8px 12px',
+                        fontSize: '11px',
+                        fontWeight: 700,
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.08em',
+                        background: 'var(--color-surface-raised)',
                         borderBottom: '2px solid var(--color-border)',
-                        color: 'var(--color-text-heading)',
+                        color: 'var(--color-text-muted)',
                       }}
                     >
                       {renderInline(cell)}
@@ -105,9 +106,9 @@ export default function Markdown({ text }) {
                     {row.map((cell, ci) => (
                       <td
                         key={ci}
-                        className="px-3 py-2"
                         style={{
-                          borderBottom: '1px solid var(--color-border)',
+                          padding: '8px 12px',
+                          borderBottom: '1px solid var(--color-border-subtle)',
                           color: 'var(--color-text)',
                         }}
                       >
@@ -124,41 +125,31 @@ export default function Markdown({ text }) {
       continue
     }
 
-    if (line.startsWith('### ')) {
-      elements.push(
-        <h3 key={i} className="text-lg font-bold mt-5 mb-2" style={{ color: 'var(--color-accent)' }}>
-          {line.slice(4)}
-        </h3>
-      )
-    } else if (line.startsWith('## ')) {
-      elements.push(
-        <h2 key={i} className="text-xl font-bold mt-6 mb-3" style={{ color: 'var(--color-accent)' }}>
-          {line.slice(3)}
-        </h2>
-      )
+    if (line.startsWith('## ')) {
+      elements.push(<h2 key={i}>{renderInline(line.slice(3))}</h2>)
+    } else if (line.startsWith('### ')) {
+      elements.push(<h3 key={i}>{renderInline(line.slice(4))}</h3>)
     } else if (line.startsWith('- ')) {
       elements.push(
-        <div key={i} className="flex gap-2 ml-4 mb-1">
-          <span style={{ color: 'var(--color-accent)' }}>•</span>
+        <div key={i} style={{ display: 'flex', gap: '10px', marginBottom: '6px', marginLeft: '4px' }}>
+          <span style={{ color: 'var(--color-accent)', flexShrink: 0, marginTop: '0.15em', fontSize: '0.7em', lineHeight: '1.75' }}>◆</span>
           <span>{renderInline(line.slice(2))}</span>
         </div>
       )
     } else if (/^\d+\.\s/.test(line)) {
       const match = line.match(/^(\d+)\.\s(.*)/)
       elements.push(
-        <div key={i} className="flex gap-2 ml-4 mb-1">
-          <span className="font-bold" style={{ color: 'var(--color-accent)' }}>{match[1]}.</span>
+        <div key={i} style={{ display: 'flex', gap: '10px', marginBottom: '6px', marginLeft: '4px' }}>
+          <span style={{ color: 'var(--color-accent)', fontWeight: 600, flexShrink: 0, fontSize: '0.9em', minWidth: '1.25rem' }}>
+            {match[1]}.
+          </span>
           <span>{renderInline(match[2])}</span>
         </div>
       )
     } else if (line.trim() === '') {
-      elements.push(<div key={i} className="h-3" />)
+      elements.push(<div key={i} style={{ height: '0.5rem' }} />)
     } else {
-      elements.push(
-        <p key={i} className="mb-2 leading-relaxed">
-          {renderInline(line)}
-        </p>
-      )
+      elements.push(<p key={i}>{renderInline(line)}</p>)
     }
 
     i++

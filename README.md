@@ -1,6 +1,6 @@
 # ⬡ Learn Xahau
 
-Open-source, multilingual training portal for learning Xahau blockchain development.
+A free, open-source **basic course on Xahau**, in eight languages — from your first wallet to your first Hook.
 
 [https://learnxahau.inftf.org](https://learnxahau.inftf.org).
 
@@ -12,10 +12,39 @@ Open-source, multilingual training portal for learning Xahau blockchain developm
 - 📖 **Theory** — Formatted content with markdown support
 - 💻 **Code Blocks** — Copyable code examples with syntax highlighting (C, JavaScript, Bash)
 - 📊 **Presentation Mode** — Fullscreen slides with keyboard navigation
-- 🌐 **Multilingual** — English, Spanish, Japanese, Korean and Simplified Chinese
-- 📈 **Progress Tracking** — Mark lessons as completed
+- 🌐 **Multilingual** — English, Spanish, French, Portuguese, Japanese, Korean, Simplified Chinese and Arabic (RTL)
+- 🔎 **Search** — Full-text across every lesson title and body (⌘K / Ctrl-K)
+- ✅ **Module checks** — Self-assessment at the end of every module, in all eight languages
+- 📈 **Progress Tracking** — Marked lessons persist in the browser
 - 🔌 **Modular** — Easy to add new modules and lessons
 
+
+## Design
+
+The interface follows the [xahau.network](https://xahau.network) design system, so the
+course reads as part of the Xahau family rather than a separate product:
+
+- **Canvas** `#f7f7f7`, white editorial cards at `24px` radius with a soft lifted shadow
+- **Type** Onest for everything, `ui-monospace` for micro-labels, chips and counters
+- **Accent** Xahau green (`#007a28` on light, `#5de48c` on dark) with a teal secondary
+- **Modules** cycle through four brand tints — green, teal, sand, sage
+- **Buttons** `6px` radius, never pills
+
+Shared primitives (`.x-card`, `.x-btn`, `.x-chip`, `.x-act-label`) and the token set live in
+`src/styles/index.css`; the wordmark lockup, icon set and module themes live in
+`src/components/Brand.jsx`. Light is the default; a dark counterpart built on the brand's
+`#0f2328` ink is available from the header toggle.
+
+## Deployment
+
+`site.config.js` holds `SITE_URL`, currently `https://learnxahau.inftf.org`.
+It feeds the canonical link, the Open Graph and Twitter image URLs,
+`robots.txt` and `sitemap.xml` — moving the site means changing that one
+line and rebuilding, nothing else hardcodes it.
+
+`.github/workflows/deploy.yml` is manual-trigger only until someone confirms
+GitHub Pages is the right target. If it is, and the custom domain stays,
+the repo will also need a `public/CNAME` containing the bare hostname.
 
 ## Tech Stack
 
@@ -23,17 +52,67 @@ Open-source, multilingual training portal for learning Xahau blockchain developm
 - Tailwind CSS
 - No backend required — all content is static JS modules
 
+## How the course data loads
+
+The twelve modules total roughly 3 MB. Importing them all up front meant every
+visitor downloaded the entire curriculum before the index page painted, so the
+data is split in three:
+
+| Artefact | Generated | Loaded |
+|---|---|---|
+| `src/data/generated/manifest.js` | at build | bundled — module and lesson titles, so the overview renders instantly |
+| `src/data/modules/*.js` | hand-written | one dynamic `import()` per module, on open (next module prefetched) |
+| `public/search/<lang>.json` | at build | fetched the first time search opens |
+
+`npm run prebuild` (and `predev`) runs `scripts/build-course-data.mjs`, which
+writes the manifest, the per-language search indexes and `public/sitemap.xml`.
+Never edit `src/data/generated/` by hand.
+
+Result: the index page loads one ~100 KB script instead of 3.1 MB.
+
+## Adding a module
+
+1. Create `src/data/modules/mXX-your-slug.js` (copy `_template.js`)
+2. Register the filename in `src/data/module-list.js`
+3. Add a line icon for its `id` to `ICON_PATHS` in `src/components/Brand.jsx`
+4. Optionally add `src/data/quizzes/<module id>.js` for an end-of-module check.
+   Questions must be answerable from that module's own lesson text — the point
+   is to check comprehension, not to introduce new material.
+
+`npm run dev` regenerates everything derived.
+
 ## Project Structure
 
 ```
 src/
 ├── components/     # React UI components
+│   └── Brand.jsx   # Wordmark, icon set, module colour themes
 ├── data/
-│   ├── i18n.js     # UI translations
-│   ├── courses.js  # Module index
-│   └── modules/    # Individual course modules
+│   ├── i18n.js        # UI translations
+│   ├── locales.js     # Language registry (internal code -> BCP-47 tag)
+│   ├── courses.js     # Manifest + lazy module loaders
+│   ├── module-list.js # Course running order
+│   ├── modules/       # Individual course modules
+│   ├── quizzes/       # Optional end-of-module checks
+│   └── generated/     # Build output — do not edit
 └── styles/         # Global CSS
+
+scripts/
+├── build-course-data.mjs  # manifest, search indexes, sitemap, robots.txt
+└── make-og-image.py       # social card
+
+tests/
+└── course-data.test.js    # smoke tests for the data pipeline
 ```
+
+## Scripts
+
+| | |
+|---|---|
+| `npm run dev` | regenerates course data, then serves |
+| `npm run build` | regenerates course data, then builds |
+| `npm run lint` | ESLint |
+| `npm test` | regenerates course data, then runs the smoke tests |
 
 ## Contributing
 

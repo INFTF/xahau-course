@@ -1,10 +1,44 @@
 import React from 'react'
 
+/**
+ * Stable, URL-safe id for a heading. Shared with LessonView, which builds the
+ * "on this page" rail from the same text, so both sides agree on the anchor.
+ */
+export function slugify(text) {
+  return String(text)
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9\u0600-\u06ff\u3000-\u9fff]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+}
+
+/**
+ * Pull the section headings out of a lesson body, in order.
+ *
+ * The curriculum writes its sections as `###` — there isn't a single `##` in
+ * the twelve modules — so both levels count, and the level is kept so the
+ * rail can indent if a lesson ever mixes them.
+ */
+export function headingsOf(text) {
+  const out = []
+  for (const line of String(text ?? '').split('\n')) {
+    const m = line.match(/^(#{2,3}) (.+)$/)
+    if (!m) continue
+    const label = m[2].replace(/[*`]/g, '').trim()
+    if (!label) continue
+    out.push({ label, id: slugify(label), level: m[1].length })
+  }
+  return out
+}
+
 function renderInline(text) {
   const parts = text.split(/(\*\*[^*]+\*\*|`[^`]+`|\[[^\]]+\]\([^)]+\))/g)
   return parts.map((part, i) => {
     if (part.startsWith('**') && part.endsWith('**')) {
-      return <strong key={i}>{part.slice(2, -2)}</strong>
+      // Recurse: the bold branch swallows the whole run, so `code` and links
+      // nested inside it would otherwise render their markers literally.
+      return <strong key={i}>{renderInline(part.slice(2, -2))}</strong>
     }
     if (part.startsWith('`') && part.endsWith('`')) {
       return <code key={i}>{part.slice(1, -1)}</code>
@@ -24,6 +58,13 @@ function renderInline(text) {
 export default function Markdown({ text }) {
   if (!text) return null
   const lines = text.split('\n')
+
+  // The lesson title is an <h1>, so its sections must be <h2> or the document
+  // skips a level. The curriculum writes them as `###` — there isn't a single
+  // `##` in the twelve modules — so the shallowest level present is promoted
+  // to h2, and anything below it follows. A lesson that mixes both still
+  // nests correctly.
+  const hasH2 = lines.some((l) => l.startsWith('## '))
   const elements = []
   let i = 0
 
@@ -44,13 +85,15 @@ export default function Markdown({ text }) {
           key={`pre-${i}`}
           style={{
             background: 'var(--color-code-bg)',
-            border: '1px solid var(--color-border)',
-            borderRadius: '10px',
-            padding: '14px 16px',
-            margin: '1rem 0',
+            border: '1px solid var(--color-code-border)',
+            borderRadius: '14px',
+            padding: '18px 20px',
+            margin: '1.5rem 0',
             overflowX: 'auto',
+            direction: 'ltr',
+            textAlign: 'left',
             fontSize: '13.5px',
-            lineHeight: '1.65',
+            lineHeight: '1.7',
             color: 'var(--color-code-text)',
           }}
         >
@@ -76,23 +119,36 @@ export default function Markdown({ text }) {
       if (rows.length > 0) {
         const [headerRow, ...bodyRows] = rows
         elements.push(
-          <div key={`tbl-${i}`} className="overflow-x-auto my-4">
-            <table style={{ width: '100%', fontSize: '14px', borderCollapse: 'collapse' }}>
+          <div
+            key={`tbl-${i}`}
+            className="overflow-x-auto my-6 rounded-xl"
+            style={{ border: '1px solid var(--color-border-subtle)' }}
+          >
+            <table
+              style={{
+                width: '100%',
+                fontSize: '13.5px',
+                borderCollapse: 'collapse',
+                minWidth: 420,
+              }}
+            >
               <thead>
                 <tr>
                   {headerRow.map((cell, ci) => (
                     <th
                       key={ci}
                       style={{
-                        textAlign: 'left',
-                        padding: '8px 12px',
-                        fontSize: '11px',
+                        textAlign: 'start',
+                        padding: '10px 14px',
+                        fontFamily: "'Fira Code', ui-monospace, monospace",
+                        fontSize: '10px',
                         fontWeight: 700,
                         textTransform: 'uppercase',
-                        letterSpacing: '0.08em',
-                        background: 'var(--color-surface-raised)',
-                        borderBottom: '2px solid var(--color-border)',
+                        letterSpacing: '0.14em',
+                        background: 'var(--color-surface-alt)',
+                        borderBottom: '1px solid var(--color-border)',
                         color: 'var(--color-text-muted)',
+                        whiteSpace: 'nowrap',
                       }}
                     >
                       {renderInline(cell)}
@@ -107,7 +163,7 @@ export default function Markdown({ text }) {
                       <td
                         key={ci}
                         style={{
-                          padding: '8px 12px',
+                          padding: '10px 14px',
                           borderBottom: '1px solid var(--color-border-subtle)',
                           color: 'var(--color-text)',
                         }}
@@ -126,22 +182,55 @@ export default function Markdown({ text }) {
     }
 
     if (line.startsWith('## ')) {
-      elements.push(<h2 key={i}>{renderInline(line.slice(3))}</h2>)
+      const raw = line.slice(3)
+      elements.push(
+        <h2 key={i} id={slugify(raw.replace(/[*`]/g, '').trim())}>
+          {renderInline(raw)}
+        </h2>,
+      )
     } else if (line.startsWith('### ')) {
-      elements.push(<h3 key={i}>{renderInline(line.slice(4))}</h3>)
+      const raw = line.slice(4)
+      const id = slugify(raw.replace(/[*`]/g, '').trim())
+      elements.push(
+        hasH2 ? (
+          <h3 key={i} id={id}>{renderInline(raw)}</h3>
+        ) : (
+          <h2 key={i} id={id} className="prose-h3">{renderInline(raw)}</h2>
+        ),
+      )
     } else if (line.startsWith('- ')) {
       elements.push(
-        <div key={i} style={{ display: 'flex', gap: '10px', marginBottom: '6px', marginLeft: '4px' }}>
-          <span style={{ color: 'var(--color-accent)', flexShrink: 0, marginTop: '0.15em', fontSize: '0.7em', lineHeight: '1.75' }}>◆</span>
+        <div key={i} style={{ display: 'flex', gap: '12px', marginBottom: '8px', marginInlineStart: '2px' }}>
+          <span
+            aria-hidden="true"
+            style={{
+              flexShrink: 0,
+              width: 6,
+              height: 6,
+              marginTop: '0.62em',
+              borderRadius: '50%',
+              background: 'var(--color-accent)',
+            }}
+          />
           <span>{renderInline(line.slice(2))}</span>
         </div>
       )
     } else if (/^\d+\.\s/.test(line)) {
       const match = line.match(/^(\d+)\.\s(.*)/)
       elements.push(
-        <div key={i} style={{ display: 'flex', gap: '10px', marginBottom: '6px', marginLeft: '4px' }}>
-          <span style={{ color: 'var(--color-accent)', fontWeight: 600, flexShrink: 0, fontSize: '0.9em', minWidth: '1.25rem' }}>
-            {match[1]}.
+        <div key={i} style={{ display: 'flex', gap: '12px', marginBottom: '8px', marginInlineStart: '2px' }}>
+          <span
+            style={{
+              color: 'var(--color-accent)',
+              fontFamily: "'Fira Code', ui-monospace, monospace",
+              fontWeight: 700,
+              flexShrink: 0,
+              fontSize: '0.82em',
+              minWidth: '1.4rem',
+              lineHeight: '1.95',
+            }}
+          >
+            {String(match[1]).padStart(2, '0')}
           </span>
           <span>{renderInline(match[2])}</span>
         </div>
